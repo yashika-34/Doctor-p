@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doctor Profile & Appointment Booking | DoctorP</title>
+  <meta name="description" content="Check doctor qualifications, available slots, and reserve your appointment with instant confirmation.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230d9488'><path d='M19 10.5h-5.5V5c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v5.5H5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5h5.5V19c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-5.5H19c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5z'/></svg>">
+</head>
+<body>
+
+  <!-- Dynamic Header Navbar -->
+  <header id="main-header"></header>
+
+  <main>
+    <div class="container">
+      <div class="details-layout">
+        
+        <!-- LEFT COLUMN: DOCTOR INFO -->
+        <div>
+          <!-- Doctor Header Card -->
+          <div class="details-card" id="doctor-profile-header-container">
+            <div style="text-align: center; padding: 2rem;">
+              <div style="display: inline-block; width: 36px; height: 36px; border: 3px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+              <p style="margin-top: 0.5rem; color: var(--navy-muted);">Loading doctor profile...</p>
+            </div>
+          </div>
+
+          <!-- Bio & Details Card -->
+          <div class="details-card" id="doctor-bio-container"></div>
+
+          <!-- Reviews Card -->
+          <div class="details-card">
+            <h3 style="font-size: 1.25rem; margin-bottom: 1rem;">Patient Reviews & Feedback</h3>
+            <div id="doctor-reviews-container"></div>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN: REAL-TIME APPOINTMENT BOOKING SIDEBAR -->
+        <div>
+          <div class="booking-sidebar-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-light);">
+              <div>
+                <span style="font-size: 0.8rem; color: var(--navy-muted); text-transform: uppercase; font-weight: 700;">Consultation Fee</span>
+                <div style="font-size: 1.75rem; font-weight: 800; color: var(--navy-dark);" id="sidebar-fee">₹500</div>
+              </div>
+              <div style="font-size: 0.8rem; background: #d1fae5; color: #065f46; padding: 0.3rem 0.75rem; border-radius: var(--radius-full); font-weight: 700;">
+                ● Live Slots
+              </div>
+            </div>
+
+            <form id="appointment-booking-form">
+              <!-- Date Picker -->
+              <div class="form-group">
+                <label class="form-label" for="booking-date">Select Appointment Date</label>
+                <input type="date" id="booking-date" class="form-control" required>
+              </div>
+
+              <!-- Time Slot Picker -->
+              <div class="form-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                  <label class="form-label" style="margin-bottom: 0;">Available Time Slots</label>
+                  <span id="slot-lock-countdown" style="display: none; font-size: 0.75rem; color: #92400e; background: #fef3c7; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 700;">
+                    🔒 Slot held for 5:00
+                  </span>
+                </div>
+
+                <!-- Slot Legend -->
+                <div style="display: flex; gap: 0.75rem; font-size: 0.75rem; margin-bottom: 0.75rem; color: var(--navy-muted);">
+                  <div style="display: flex; align-items: center; gap: 0.25rem;"><span style="width: 10px; height: 10px; background: #a7f3d0; border-radius: 2px;"></span> Available</div>
+                  <div style="display: flex; align-items: center; gap: 0.25rem;"><span style="width: 10px; height: 10px; background: #fde68a; border-radius: 2px;"></span> Reserved</div>
+                  <div style="display: flex; align-items: center; gap: 0.25rem;"><span style="width: 10px; height: 10px; background: #fecaca; border-radius: 2px;"></span> Booked</div>
+                </div>
+
+                <div id="slots-grid" class="slot-grid">
+                  <!-- Slots populated dynamically -->
+                </div>
+              </div>
+
+              <!-- Reason for Visit -->
+              <div class="form-group">
+                <label class="form-label" for="consultation-reason">Reason for Consultation</label>
+                <textarea id="consultation-reason" class="form-control" placeholder="Briefly describe your symptoms or reason for visit (optional)..."></textarea>
+              </div>
+
+              <!-- Selection Summary -->
+              <div style="background: var(--navy-light); padding: 0.85rem; border-radius: var(--radius-md); font-size: 0.85rem; margin-bottom: 1.25rem;">
+                <div style="color: var(--navy-muted); margin-bottom: 0.2rem;">Selected Schedule:</div>
+                <div id="booking-slot-summary"><span style="color: var(--navy-muted);">No slot selected yet</span></div>
+              </div>
+
+              <button type="submit" id="btn-confirm-booking" class="btn btn-primary" style="width: 100%;" disabled>
+                Confirm & Book Appointment
+              </button>
+
+              <p style="font-size: 0.75rem; color: var(--navy-muted); text-align: center; margin-top: 0.75rem;">
+                Free cancellation up to 2 hours before scheduled slot.
+              </p>
+            </form>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- BOOKING CONFIRMATION MODAL -->
+  <div class="modal-overlay" id="confirmation-modal">
+    <div class="modal-content" style="text-align: center;">
+      <button class="modal-close-btn" onclick="closeModal()">✕</button>
+
+      <div style="width: 72px; height: 72px; background: #d1fae5; color: #059669; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.25rem; margin: 0 auto 1.25rem;">
+        ✓
+      </div>
+
+      <h2 style="font-size: 1.6rem; color: var(--navy-dark); margin-bottom: 0.5rem;">Appointment Confirmed!</h2>
+      <p style="color: var(--navy-muted); font-size: 0.95rem; margin-bottom: 1.5rem;">
+        Your appointment has been successfully scheduled with doctor.
+      </p>
+
+      <div style="background: var(--navy-light); border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.25rem; text-align: left; margin-bottom: 1.75rem;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.6rem; font-size: 0.85rem;">
+          <span style="color: var(--navy-muted);">Appointment ID:</span>
+          <strong id="confirmed-apt-id" style="color: var(--primary); font-family: monospace; font-size: 0.95rem;">APT-XXXX</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.6rem; font-size: 0.85rem;">
+          <span style="color: var(--navy-muted);">Doctor:</span>
+          <strong id="confirmed-doc-name" style="color: var(--navy-dark);">Dr. Name</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.6rem; font-size: 0.85rem;">
+          <span style="color: var(--navy-muted);">Date & Time:</span>
+          <strong id="confirmed-datetime" style="color: var(--navy-dark);">Date Time</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+          <span style="color: var(--navy-muted);">Consultation Fee:</span>
+          <strong id="confirmed-fee" style="color: var(--navy-dark);">₹500</strong>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 0.75rem; justify-content: center;">
+        <a href="my-appointments.html" class="btn btn-primary">View My Appointments</a>
+        <a href="doctors.html" class="btn btn-secondary">Browse More Doctors</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dynamic Footer -->
+  <footer id="main-footer"></footer>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/navbar.js"></script>
+  <script src="js/doctor-details.js"></script>
+</body>
+</html>

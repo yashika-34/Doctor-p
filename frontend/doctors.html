@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Find Trusted Doctors & Specialists | DoctorP</title>
+  <meta name="description" content="Browse and filter board-certified medical doctors by department, city, fee, and patient ratings.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230d9488'><path d='M19 10.5h-5.5V5c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v5.5H5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5h5.5V19c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-5.5H19c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5z'/></svg>">
+</head>
+<body>
+
+  <!-- Dynamic Header Navbar -->
+  <header id="main-header"></header>
+
+  <main style="padding: 2.5rem 0 5rem;">
+    <div class="container">
+      
+      <!-- Page Header -->
+      <div style="margin-bottom: 2rem;">
+        <h1 style="font-size: 2.25rem; margin-bottom: 0.5rem;">Find Your Doctor</h1>
+        <p style="color: var(--navy-muted);">Search top-rated physicians, compare consultation fees, and book online.</p>
+      </div>
+
+      <!-- Comprehensive Filter Bar -->
+      <div style="background: #ffffff; border: 1px solid var(--border-light); border-radius: var(--radius-xl); padding: 1.5rem; box-shadow: var(--shadow-sm); margin-bottom: 2.5rem;">
+        <form id="doctors-filter-form" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)) auto auto; gap: 1rem; align-items: end;">
+          
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="filter-search">Doctor Name / Keyword</label>
+            <input type="text" id="filter-search" class="form-control" placeholder="Search doctor or clinic...">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="filter-specialty">Specialization</label>
+            <select id="filter-specialty" class="form-control">
+              <option value="">All Specializations</option>
+              <option value="Cardiology">Cardiology</option>
+              <option value="Dermatology">Dermatology</option>
+              <option value="Neurology">Neurology</option>
+              <option value="Pediatrics">Pediatrics</option>
+              <option value="Orthopedics">Orthopedics</option>
+              <option value="General Medicine">General Medicine</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="filter-city">City</label>
+            <select id="filter-city" class="form-control">
+              <option value="">All Cities</option>
+              <option value="New Delhi">New Delhi</option>
+              <option value="Mumbai">Mumbai</option>
+              <option value="Bangalore">Bangalore</option>
+              <option value="Kolkata">Kolkata</option>
+              <option value="Hyderabad">Hyderabad</option>
+              <option value="Chennai">Chennai</option>
+              <option value="Gurugram">Gurugram</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="filter-min-rating">Minimum Rating</label>
+            <select id="filter-min-rating" class="form-control">
+              <option value="">Any Rating</option>
+              <option value="4.5">4.5+ Stars</option>
+              <option value="4.0">4.0+ Stars</option>
+              <option value="3.5">3.5+ Stars</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="filter-max-fee">Max Fee (₹)</label>
+            <input type="number" id="filter-max-fee" class="form-control" placeholder="e.g. 800" min="0" step="50">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="filter-sort">Sort By</label>
+            <select id="filter-sort" class="form-control">
+              <option value="rating">Highest Rated</option>
+              <option value="experience">Most Experienced</option>
+              <option value="fee_asc">Fee: Low to High</option>
+              <option value="fee_desc">Fee: High to Low</option>
+              <option value="name">Name (A-Z)</option>
+            </select>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem;">
+            <button type="submit" class="btn btn-primary" id="btn-apply-filters">Filter</button>
+            <button type="button" id="btn-reset-filters" class="btn btn-secondary">Reset</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Results Count Bar -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <p id="doctors-count-text" style="font-weight: 600; color: var(--navy-dark); font-size: 0.95rem;">Loading doctors...</p>
+      </div>
+
+      <!-- Doctors Grid -->
+      <div id="doctors-list-container" class="doctors-grid">
+        <!-- Rendered dynamically via doctors.js -->
+      </div>
+
+      <!-- Pagination -->
+      <div id="pagination-container"></div>
+    </div>
+  </main>
+
+  <!-- Dynamic Footer -->
+  <footer id="main-footer"></footer>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/navbar.js"></script>
+  <script src="js/doctors.js"></script>
+</body>
+</html>
