@@ -7,6 +7,45 @@ document.addEventListener('DOMContentLoaded', () => {
   renderEmergencyModal();
 });
 
+// Tab switching helpers for Doctor & Admin dashboard integration
+window.switchDoctorTab = function (targetSection) {
+  if (window.location.pathname.includes('doctor-dashboard.html')) {
+    const tab = document.querySelector(`.dash-menu-link[data-target="${targetSection}"]`);
+    if (tab) {
+      tab.click();
+    } else {
+      document.querySelectorAll('.dash-section').forEach((sec) => (sec.style.display = 'none'));
+      const activeSec = document.getElementById(targetSection);
+      if (activeSec) activeSec.style.display = 'block';
+    }
+    // Update active class in navbar
+    document.querySelectorAll('#desktop-nav-links a').forEach((a) => a.classList.remove('active'));
+    const matchingNavLink = document.querySelector(`#desktop-nav-links a[data-section="${targetSection}"]`);
+    if (matchingNavLink) matchingNavLink.classList.add('active');
+  } else {
+    window.location.href = `doctor-dashboard.html#${targetSection}`;
+  }
+};
+
+window.switchAdminTab = function (targetSection) {
+  if (window.location.pathname.includes('admin-dashboard.html')) {
+    const tab = document.querySelector(`.dash-menu-link[data-target="${targetSection}"]`);
+    if (tab) {
+      tab.click();
+    } else {
+      document.querySelectorAll('.admin-section').forEach((sec) => (sec.style.display = 'none'));
+      const activeSec = document.getElementById(targetSection);
+      if (activeSec) activeSec.style.display = 'block';
+    }
+    // Update active class in navbar
+    document.querySelectorAll('#desktop-nav-links a').forEach((a) => a.classList.remove('active'));
+    const matchingNavLink = document.querySelector(`#desktop-nav-links a[data-section="${targetSection}"]`);
+    if (matchingNavLink) matchingNavLink.classList.add('active');
+  } else {
+    window.location.href = `admin-dashboard.html#${targetSection}`;
+  }
+};
+
 function renderNavbar() {
   const header = document.getElementById('main-header');
   if (!header) return;
@@ -14,27 +53,193 @@ function renderNavbar() {
   const currentPath = window.location.pathname;
   const isHome = currentPath.endsWith('/') || currentPath.endsWith('index.html');
   const isDoctors = currentPath.includes('doctors.html') || currentPath.includes('doctor-details.html');
-  const isAppointments = currentPath.includes('my-appointments.html');
+  const isDoctorDashboard = currentPath.includes('doctor-dashboard.html');
+  const isAdminDashboard = currentPath.includes('admin-dashboard.html');
+  const isPatientDashboard = currentPath.includes('patient-dashboard.html') || currentPath.includes('my-appointments.html');
 
   const user = window.Auth ? window.Auth.getUser() : null;
+  const role = user ? user.role : 'guest';
+  const avatar = (user && user.avatar) || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80';
+  const firstName = user ? user.name.replace(/^Dr\.\s*/i, '').split(' ')[0] : '';
 
+  // 1. TOP HELPLINE / STATUS BANNER
+  let topBannerHtml = '';
+  if (isDoctorDashboard || (role === 'doctor' && !isHome && !isDoctors)) {
+    topBannerHtml = `
+      <div class="emergency-top-banner doctor-top-banner">
+        <span>👨‍⚕️ <strong>Doctor Workspace</strong> &bull; OPD Cabin 304 Active &bull; Dr. ${user ? user.name.replace(/^Dr\.\s*/i, '') : 'Physician'} &bull; <span style="display:inline-flex; align-items:center; gap:4px;"><span style="width:8px; height:8px; border-radius:50%; background:#10b981; display:inline-block;"></span> Online</span></span>
+        <button type="button" class="emergency-sos-link" onclick="if(window.callNextOPDPatient){window.callNextOPDPatient()}else{window.location.href='doctor-dashboard.html'}">
+          🔔 Call Next Token
+        </button>
+      </div>
+    `;
+  } else if (isAdminDashboard || (role === 'admin' && !isHome && !isDoctors)) {
+    topBannerHtml = `
+      <div class="emergency-top-banner admin-top-banner">
+        <span>🛡️ <strong>System Administration Console</strong> &bull; Platform Health: 100% Operational &bull; MongoDB Connected &bull; JWT Security Guard Active</span>
+        <button type="button" class="emergency-sos-link" onclick="window.location.reload()">
+          ⚡ Refresh Metrics
+        </button>
+      </div>
+    `;
+  } else {
+    topBannerHtml = `
+      <div class="emergency-top-banner">
+        <span>🚨 24x7 Emergency / Ambulance Hotline: <strong>108 / 112</strong></span>
+        <button type="button" class="emergency-sos-link" onclick="window.openEmergencyModal()">
+          ⚡ Instant Ambulance SOS
+        </button>
+      </div>
+    `;
+  }
+
+  // 2. BRAND LOGO & ROLE PORTAL BADGE
+  let brandLogoHtml = '';
+  if (isDoctorDashboard || (role === 'doctor' && !isHome && !isDoctors)) {
+    brandLogoHtml = `
+      <a href="doctor-dashboard.html" class="brand-logo">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+        Doctor<span class="brand-badge">P</span>
+        <span class="nav-portal-badge doctor-badge">👨‍⚕️ Doctor Workspace</span>
+      </a>
+    `;
+  } else if (isAdminDashboard || (role === 'admin' && !isHome && !isDoctors)) {
+    brandLogoHtml = `
+      <a href="admin-dashboard.html" class="brand-logo">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+        Doctor<span class="brand-badge">P</span>
+        <span class="nav-portal-badge admin-badge">🛡️ Admin Console</span>
+      </a>
+    `;
+  } else {
+    brandLogoHtml = `
+      <a href="index.html" class="brand-logo">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+        Doctor<span class="brand-badge">P</span>
+        ${role === 'patient' ? '<span class="nav-portal-badge patient-badge">👤 Patient Care</span>' : ''}
+      </a>
+    `;
+  }
+
+  // 3. NAVIGATION LINKS (DESKTOP & MOBILE)
+  let navLinksHtml = '';
+  let mobileLinksHtml = '';
+
+  if (isDoctorDashboard || (role === 'doctor' && !isHome && !isDoctors)) {
+    // ── DOCTOR SPECIFIC NAVBAR ──
+    navLinksHtml = `
+      <li><a href="javascript:void(0)" class="active" data-section="sec-doctor-appointments" onclick="window.switchDoctorTab('sec-doctor-appointments')">📅 Appointments</a></li>
+      <li><a href="javascript:void(0)" data-section="sec-doctor-availability" onclick="window.switchDoctorTab('sec-doctor-availability')">⏰ Manage Slots</a></li>
+      <li><a href="javascript:void(0)" data-section="sec-doctor-profile" onclick="window.switchDoctorTab('sec-doctor-profile')">⚙️ Clinic Profile</a></li>
+      <li><a href="doctors.html" target="_blank" style="color: var(--navy-muted); font-size: 0.9rem;" title="View directory as seen by patients">👁️ Public Directory ↗</a></li>
+    `;
+    mobileLinksHtml = `
+      <li><a href="javascript:void(0)" onclick="window.switchDoctorTab('sec-doctor-appointments')">📅 Scheduled Consultations</a></li>
+      <li><a href="javascript:void(0)" onclick="window.switchDoctorTab('sec-doctor-availability')">⏰ Clinic Working Hours & Slots</a></li>
+      <li><a href="javascript:void(0)" onclick="window.switchDoctorTab('sec-doctor-profile')">⚙️ Profile & Credentials</a></li>
+      <li><a href="doctors.html" target="_blank">👁️ Find Doctors Directory</a></li>
+      <li><a href="javascript:void(0)" onclick="window.Auth.logout()" style="color: #ef4444; font-weight: 700;">🚪 Sign Out</a></li>
+    `;
+  } else if (isAdminDashboard || (role === 'admin' && !isHome && !isDoctors)) {
+    // ── ADMIN SPECIFIC NAVBAR ──
+    navLinksHtml = `
+      <li><a href="javascript:void(0)" class="active" data-section="sec-admin-doctors" onclick="window.switchAdminTab('sec-admin-doctors')">👨‍⚕️ Manage Doctors</a></li>
+      <li><a href="javascript:void(0)" data-section="sec-admin-patients" onclick="window.switchAdminTab('sec-admin-patients')">👥 Patients</a></li>
+      <li><a href="javascript:void(0)" data-section="sec-admin-appointments" onclick="window.switchAdminTab('sec-admin-appointments')">📊 All Bookings</a></li>
+      <li><a href="index.html" target="_blank" style="color: var(--navy-muted); font-size: 0.9rem;" title="Preview live patient portal">🌐 Live Patient Site ↗</a></li>
+    `;
+    mobileLinksHtml = `
+      <li><a href="javascript:void(0)" onclick="window.switchAdminTab('sec-admin-doctors')">👨‍⚕️ Doctor Verification</a></li>
+      <li><a href="javascript:void(0)" onclick="window.switchAdminTab('sec-admin-patients')">👥 Registered Patients</a></li>
+      <li><a href="javascript:void(0)" onclick="window.switchAdminTab('sec-admin-appointments')">📊 Platform Appointments</a></li>
+      <li><a href="index.html" target="_blank">🌐 Live Patient Site</a></li>
+      <li><a href="javascript:void(0)" onclick="window.Auth.logout()" style="color: #ef4444; font-weight: 700;">🚪 Sign Out</a></li>
+    `;
+  } else if (role === 'patient') {
+    // ── PATIENT SPECIFIC NAVBAR ──
+    navLinksHtml = `
+      <li><a href="index.html" class="${isHome ? 'active' : ''}">Home</a></li>
+      <li><a href="doctors.html" class="${isDoctors ? 'active' : ''}">Find Doctors</a></li>
+      <li><a href="patient-dashboard.html" class="${isPatientDashboard ? 'active' : ''}">📅 My Bookings & Passes</a></li>
+      <li><a href="patient-dashboard.html?demo=rx" style="color: #7c3aed; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">✨ AI Rx Explainer</a></li>
+      <li><a href="index.html#symptom-checker">🤖 AI Symptom Checker</a></li>
+    `;
+    mobileLinksHtml = `
+      <li><a href="index.html">Home</a></li>
+      <li><a href="doctors.html">Find Doctors</a></li>
+      <li><a href="patient-dashboard.html">📅 My Bookings & Passes</a></li>
+      <li><a href="patient-dashboard.html?demo=rx" style="color: #7c3aed; font-weight: 700;">✨ AI Rx Explainer</a></li>
+      <li><a href="index.html#symptom-checker">🤖 AI Symptom Checker</a></li>
+      <li><a href="javascript:void(0)" onclick="window.Auth.logout()" style="color: #ef4444; font-weight: 700;">🚪 Sign Out</a></li>
+    `;
+  } else {
+    // ── PUBLIC GUEST NAVBAR ──
+    navLinksHtml = `
+      <li><a href="index.html" class="${isHome ? 'active' : ''}">Home</a></li>
+      <li><a href="doctors.html" class="${isDoctors ? 'active' : ''}">Find Doctors</a></li>
+      <li><a href="index.html#symptom-checker">AI Symptom Checker</a></li>
+      <li><a href="index.html#how-it-works">How It Works</a></li>
+    `;
+    mobileLinksHtml = `
+      <li><a href="index.html">Home</a></li>
+      <li><a href="doctors.html">Find Doctors</a></li>
+      <li><a href="index.html#symptom-checker">AI Symptom Checker</a></li>
+      <li><a href="index.html#how-it-works">How It Works</a></li>
+      <li><a href="login.html" style="font-weight: 700; color: var(--primary);">Sign In</a></li>
+    `;
+  }
+
+  // 4. USER ACTIONS ON RIGHT
   let authNavHtml = '';
   if (user) {
     const dashUrl = window.Auth.getDashboardUrl();
-    const avatar = user.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80';
-    authNavHtml = `
-      <div style="display: flex; align-items: center; gap: 0.75rem;">
-        <a href="${dashUrl}" class="user-profile-menu">
-          <img src="${avatar}" alt="${user.name}">
-          <div class="user-info-text">
-            <div class="user-name">${user.name.split(' ')[0]}</div>
-            <div class="user-role-badge">${user.role}</div>
-          </div>
-        </a>
-        <a href="${dashUrl}" class="btn btn-outline btn-sm">Dashboard</a>
-        <button onclick="window.Auth.logout()" class="btn btn-secondary btn-sm" title="Log Out">Logout</button>
-      </div>
-    `;
+    if (role === 'doctor') {
+      authNavHtml = `
+        <div style="display: flex; align-items: center; gap: 0.65rem;">
+          <a href="doctor-dashboard.html" class="user-profile-menu" title="Open Doctor Workspace">
+            <img src="${avatar}" alt="${user.name}">
+            <div class="user-info-text">
+              <div class="user-name">Dr. ${firstName}</div>
+              <div class="user-role-badge" style="color: #0f766e;">Physician</div>
+            </div>
+          </a>
+          <button onclick="window.Auth.logout()" class="btn btn-secondary btn-sm" title="Log Out">Logout</button>
+        </div>
+      `;
+    } else if (role === 'admin') {
+      authNavHtml = `
+        <div style="display: flex; align-items: center; gap: 0.65rem;">
+          <a href="admin-dashboard.html" class="user-profile-menu" title="Open Admin Console">
+            <img src="${avatar}" alt="${user.name}">
+            <div class="user-info-text">
+              <div class="user-name">${firstName}</div>
+              <div class="user-role-badge" style="color: #92400e;">Admin</div>
+            </div>
+          </a>
+          <button onclick="window.Auth.logout()" class="btn btn-secondary btn-sm" title="Log Out">Logout</button>
+        </div>
+      `;
+    } else {
+      authNavHtml = `
+        <div style="display: flex; align-items: center; gap: 0.65rem;">
+          <a href="${dashUrl}" class="user-profile-menu" title="Open Patient Portal">
+            <img src="${avatar}" alt="${user.name}">
+            <div class="user-info-text">
+              <div class="user-name">${firstName}</div>
+              <div class="user-role-badge" style="color: #0284c7;">Patient</div>
+            </div>
+          </a>
+          <a href="doctors.html" class="btn btn-primary btn-sm">Book Visit +</a>
+          <button onclick="window.Auth.logout()" class="btn btn-secondary btn-sm" title="Log Out">Logout</button>
+        </div>
+      `;
+    }
   } else {
     authNavHtml = `
       <div style="display: flex; align-items: center; gap: 0.75rem;">
@@ -45,31 +250,16 @@ function renderNavbar() {
   }
 
   header.innerHTML = `
-    <!-- 24x7 Emergency Helpline Top Bar -->
-    <div class="emergency-top-banner">
-      <span>🚨 24x7 Emergency / Ambulance Hotline: <strong>108 / 112</strong></span>
-      <button type="button" class="emergency-sos-link" onclick="window.openEmergencyModal()">
-        ⚡ Instant Ambulance SOS
-      </button>
-    </div>
+    <!-- Dynamic Top Banner -->
+    ${topBannerHtml}
 
     <!-- Main Navigation Bar -->
     <nav class="header-navbar">
       <div class="container nav-container">
-        <a href="index.html" class="brand-logo">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-          </svg>
-          Doctor<span class="brand-badge">P</span>
-        </a>
+        ${brandLogoHtml}
 
         <ul class="nav-links" id="desktop-nav-links">
-          <li><a href="index.html" class="${isHome ? 'active' : ''}">Home</a></li>
-          <li><a href="doctors.html" class="${isDoctors ? 'active' : ''}">Find Doctors</a></li>
-          <li><a href="index.html#symptom-checker">AI Symptom Checker</a></li>
-          <li><a href="index.html#how-it-works">How It Works</a></li>
-          ${user ? `<li><a href="my-appointments.html" class="${isAppointments ? 'active' : ''}">My Appointments</a></li>` : ''}
-          ${user && user.role === 'patient' ? `<li><a href="patient-dashboard.html?demo=rx" style="color: #7c3aed; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">✨ AI Rx Explainer</a></li>` : ''}
+          ${navLinksHtml}
         </ul>
 
         <div class="nav-actions">
@@ -87,11 +277,7 @@ function renderNavbar() {
       <!-- Mobile Dropdown Navigation -->
       <div id="mobile-menu" style="display: none; background: #ffffff; border-top: 1px solid var(--border-light); padding: 1.25rem 1.5rem;">
         <ul style="list-style: none; display: flex; flex-direction: column; gap: 1rem;">
-          <li><a href="index.html" style="font-weight: 600; color: var(--navy-dark);">Home</a></li>
-          <li><a href="doctors.html" style="font-weight: 600; color: var(--navy-dark);">Find Doctors</a></li>
-          <li><a href="index.html#symptom-checker" style="font-weight: 600; color: var(--navy-dark);">AI Symptom Checker</a></li>
-          ${user ? `<li><a href="my-appointments.html" style="font-weight: 600; color: var(--navy-dark);">My Appointments</a></li>` : ''}
-          ${user ? `<li><a href="${window.Auth.getDashboardUrl()}" style="font-weight: 600; color: var(--primary);">Go to Dashboard</a></li>` : ''}
+          ${mobileLinksHtml}
         </ul>
       </div>
     </nav>
@@ -106,6 +292,7 @@ function renderNavbar() {
     });
   }
 }
+
 
 function renderFooter() {
   const footer = document.getElementById('main-footer');

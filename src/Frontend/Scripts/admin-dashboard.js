@@ -21,11 +21,23 @@ function setupAdminTabs() {
       const activeSec = document.getElementById(target);
       if (activeSec) activeSec.style.display = 'block';
 
+      // Sync active state in top navbar
+      document.querySelectorAll('#desktop-nav-links a').forEach((a) => a.classList.remove('active'));
+      const navItem = document.querySelector(`#desktop-nav-links a[data-section="${target}"]`);
+      if (navItem) navItem.classList.add('active');
+
       if (target === 'sec-admin-doctors') loadAdminDoctors();
       else if (target === 'sec-admin-patients') loadAdminPatients();
       else if (target === 'sec-admin-appointments') loadAdminAppointments();
     });
   });
+
+  // Check URL hash on page load
+  const hash = window.location.hash ? window.location.hash.substring(1) : '';
+  if (hash) {
+    const matchingTab = document.querySelector(`.dash-menu-link[data-target="${hash}"]`);
+    if (matchingTab) matchingTab.click();
+  }
 }
 
 // Load System Overview Stats

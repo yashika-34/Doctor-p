@@ -29,8 +29,20 @@ function setupTabs() {
       document.querySelectorAll('.dash-section').forEach((sec) => (sec.style.display = 'none'));
       const activeSec = document.getElementById(targetSection);
       if (activeSec) activeSec.style.display = 'block';
+
+      // Sync active state in top navbar
+      document.querySelectorAll('#desktop-nav-links a').forEach((a) => a.classList.remove('active'));
+      const navItem = document.querySelector(`#desktop-nav-links a[data-section="${targetSection}"]`);
+      if (navItem) navItem.classList.add('active');
     });
   });
+
+  // Check URL hash on page load
+  const hash = window.location.hash ? window.location.hash.substring(1) : '';
+  if (hash) {
+    const matchingTab = document.querySelector(`.dash-menu-link[data-target="${hash}"]`);
+    if (matchingTab) matchingTab.click();
+  }
 }
 
 // Load Doctor Appointments
