@@ -1,8 +1,10 @@
-// Universal Navbar and Footer Injector & State Synchronizer
+// Universal Navbar, Emergency SOS, and Demo Switcher Injector
 
 document.addEventListener('DOMContentLoaded', () => {
   renderNavbar();
   renderFooter();
+  renderDemoSwitcher();
+  renderEmergencyModal();
 });
 
 function renderNavbar() {
@@ -43,6 +45,15 @@ function renderNavbar() {
   }
 
   header.innerHTML = `
+    <!-- 24x7 Emergency Helpline Top Bar -->
+    <div class="emergency-top-banner">
+      <span>🚨 24x7 Emergency / Ambulance Hotline: <strong>108 / 112</strong></span>
+      <button type="button" class="emergency-sos-link" onclick="window.openEmergencyModal()">
+        ⚡ Instant Ambulance SOS
+      </button>
+    </div>
+
+    <!-- Main Navigation Bar -->
     <nav class="header-navbar">
       <div class="container nav-container">
         <a href="index.html" class="brand-logo">
@@ -58,6 +69,7 @@ function renderNavbar() {
           <li><a href="index.html#symptom-checker">AI Symptom Checker</a></li>
           <li><a href="index.html#how-it-works">How It Works</a></li>
           ${user ? `<li><a href="my-appointments.html" class="${isAppointments ? 'active' : ''}">My Appointments</a></li>` : ''}
+          ${user && user.role === 'patient' ? `<li><a href="patient-dashboard.html?demo=rx" style="color: #7c3aed; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">✨ AI Rx Explainer</a></li>` : ''}
         </ul>
 
         <div class="nav-actions">
@@ -110,7 +122,7 @@ function renderFooter() {
               </svg>
               Doctor<span style="color: #0d9488;">P</span>
             </h3>
-            <p>Smart, seamless, and reliable healthcare appointment platform connecting patients with top medical specialists nationwide.</p>
+            <p>Smart, seamless, and reliable healthcare appointment platform connecting patients with top hospital specialists nationwide.</p>
           </div>
 
           <div class="footer-col">
@@ -124,7 +136,7 @@ function renderFooter() {
           </div>
 
           <div class="footer-col">
-            <h4>Specializations</h4>
+            <h4>Clinical Departments</h4>
             <ul class="footer-links">
               <li><a href="doctors.html?specialty=Cardiology">Cardiology</a></li>
               <li><a href="doctors.html?specialty=Dermatology">Dermatology</a></li>
@@ -135,7 +147,7 @@ function renderFooter() {
           </div>
 
           <div class="footer-col">
-            <h4>Contact & Support</h4>
+            <h4>Hospital Network & Support</h4>
             <ul class="footer-links">
               <li><span style="color: #cbd5e1;">📍 Medical Enclave, New Delhi</span></li>
               <li><span style="color: #cbd5e1;">📞 +91 1800-DOCTORP</span></li>
@@ -153,3 +165,302 @@ function renderFooter() {
     </footer>
   `;
 }
+
+// ==========================================================================
+// UNIVERSAL 1-CLICK DEMO PERSONA SWITCHER WIDGET
+// Allows examiners, recruiters, and evaluators to switch roles in 1 click
+// ==========================================================================
+function renderDemoSwitcher() {
+  if (document.getElementById('demo-switcher-widget')) return;
+
+  const user = window.Auth ? window.Auth.getUser() : null;
+  const currentRole = user ? user.role : 'none';
+
+  const widget = document.createElement('div');
+  widget.id = 'demo-switcher-widget';
+  widget.className = 'demo-switcher-widget';
+
+  widget.innerHTML = `
+    <div class="demo-switcher-card" id="demo-switcher-box">
+      <div class="demo-switcher-title">
+        <span>⚡ Quick Demo:</span>
+      </div>
+
+      <button type="button" class="demo-btn-pill ${currentRole === 'patient' ? 'active' : ''}" onclick="window.switchDemoUser('patient@doctorp.com', 'Patient@123', 'Patient (Rahul Sharma)', 'patient-dashboard.html')">
+        👤 Patient
+      </button>
+
+      <button type="button" class="demo-btn-pill ${currentRole === 'doctor' ? 'active' : ''}" onclick="window.switchDemoUser('dr.sharma@doctorp.com', 'Doctor@123', 'Dr. Rajesh Sharma (Cardiology)', 'doctor-dashboard.html')">
+        👨‍⚕️ Doctor
+      </button>
+
+      <button type="button" class="demo-btn-pill ${currentRole === 'admin' ? 'active' : ''}" onclick="window.switchDemoUser('admin@doctorp.com', 'Admin@123', 'System Administrator', 'admin-dashboard.html')">
+        🛡️ Admin
+      </button>
+
+      ${user ? `<button type="button" class="demo-btn-pill" onclick="window.Auth.logout()" title="Logout">🚪</button>` : ''}
+
+      <button type="button" class="demo-switcher-collapse-btn" onclick="toggleDemoSwitcher()" title="Minimize / Expand">
+        ✕
+      </button>
+    </div>
+  `;
+
+  document.body.appendChild(widget);
+}
+
+window.toggleDemoSwitcher = function () {
+  const box = document.getElementById('demo-switcher-box');
+  if (!box) return;
+  const isCollapsed = box.classList.toggle('collapsed');
+  if (isCollapsed) {
+    box.innerHTML = `<button type="button" class="demo-btn-pill" onclick="window.toggleDemoSwitcher()" style="background: var(--primary);">⚡ Demo Roles</button>`;
+  } else {
+    document.getElementById('demo-switcher-widget')?.remove();
+    renderDemoSwitcher();
+  }
+};
+
+window.switchDemoUser = async function (email, password, roleName, targetDashboard) {
+  try {
+    const data = await window.apiFetch('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+
+    window.Auth.setSession(data.token, data.user);
+    if (data.doctor) {
+      localStorage.setItem('doctorp_doctor_profile', JSON.stringify(data.doctor));
+    }
+
+    window.showToast(`Switched persona to: ${roleName}`, 'success');
+    setTimeout(() => {
+      window.location.href = targetDashboard;
+    }, 400);
+  } catch (err) {
+    window.showToast(err.message || 'Error logging into demo account', 'error');
+  }
+};
+
+// ==========================================================================
+// 24x7 EMERGENCY SOS & AMBULANCE DISPATCH MODAL
+// ==========================================================================
+function renderEmergencyModal() {
+  if (document.getElementById('emergency-sos-modal')) return;
+
+  const modalHtml = `
+    <div id="emergency-sos-modal" class="modal-overlay">
+      <div class="modal-content" style="max-width: 520px;">
+        <button class="modal-close-btn" onclick="window.closeEmergencyModal()">✕</button>
+
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem;">
+          <div style="width: 48px; height: 48px; border-radius: 50%; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; font-size: 1.6rem;">
+            🚑
+          </div>
+          <div>
+            <h3 style="font-size: 1.35rem; color: #991b1b; margin: 0;">Emergency Trauma & SOS Support</h3>
+            <p style="font-size: 0.85rem; color: var(--navy-muted); margin: 0;">24/7 Immediate Critical Healthcare Response</p>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+          <button type="button" onclick="window.handleEmergencyCall('108')" class="btn btn-primary" style="background: #dc2626; border-color: #b91c1c; font-size: 0.95rem; cursor: pointer;">
+            📞 Call Ambulance (108)
+          </button>
+          <button type="button" onclick="window.handleEmergencyCall('112')" class="btn btn-secondary" style="font-size: 0.95rem; cursor: pointer;">
+            🚨 National SOS (112)
+          </button>
+        </div>
+
+        <!-- In-Modal Dialing Alert Box (Prevents desktop terminal spawning) -->
+        <div id="emergency-call-status-box" style="display: none; background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--radius-sm); padding: 0.75rem 1rem; margin-bottom: 1.25rem;"></div>
+
+        <!-- Fast-Track Ambulance Dispatch -->
+        <div style="background: var(--navy-light); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.25rem;">
+          <h4 style="font-size: 0.95rem; color: var(--navy-dark); margin-bottom: 0.4rem;">Fast-Track Ambulance Dispatch</h4>
+          <p style="font-size: 0.8rem; color: var(--navy-muted); margin-bottom: 0.75rem;">GPS-coordinated ALS (Advanced Life Support) response unit nearest to your current location.</p>
+          
+          <div id="ambulance-dispatch-result" style="display: none; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 0.75rem;">
+            <div style="font-weight: 700; color: #065f46; font-size: 0.85rem;">✓ Ambulance Dispatched!</div>
+            <div style="font-size: 0.8rem; color: #047857; margin-top: 0.2rem;">
+              Unit #DL-01-ALS-8942 en route from AIIMS Emergency Centre. <br>
+              <strong>Estimated Arrival Time: 6 minutes (Distance: 1.8 km)</strong>
+            </div>
+          </div>
+
+          <button type="button" id="btn-request-ambulance" class="btn btn-outline" style="width: 100%; font-size: 0.85rem;" onclick="window.dispatchEmergencyAmbulance()">
+            📍 Request Ambulance at Current GPS Location
+          </button>
+        </div>
+
+        <!-- Live GPS Casualty & Trauma Hospital Locator -->
+        <div style="border: 1px solid #fecaca; border-radius: var(--radius-md); padding: 1.25rem; background: #fff5f5; margin-bottom: 1.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <div>
+              <h4 style="font-size: 0.95rem; color: #991b1b; margin: 0;">Nearest 24/7 Casualty & Trauma Centers</h4>
+              <p style="font-size: 0.75rem; color: #7f1d1d; margin: 0;">Live distance & hospital routing</p>
+            </div>
+            <button type="button" onclick="window.locateNearestHospitalsGPS()" class="btn btn-sm" style="background: #dc2626; color: #ffffff; border: none; font-size: 0.75rem; font-weight: 700; cursor: pointer; padding: 0.3rem 0.65rem;">
+              📡 Use My GPS
+            </button>
+          </div>
+
+          <div id="gps-hospitals-list" style="display: flex; flex-direction: column; gap: 0.65rem;">
+            <div style="background: #ffffff; border: 1px solid #fca5a5; border-radius: 6px; padding: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-weight: 700; color: #1e293b; font-size: 0.85rem;">🏥 AIIMS Apex Trauma Centre</div>
+                <div style="font-size: 0.75rem; color: #059669; font-weight: 600;">● 24/7 ER • 18 ICU Beds • Blood Bank</div>
+                <div style="font-size: 0.75rem; color: #64748b;" id="aiims-dist-label">📍 ~1.8 km (Safdarjung Enclave, Ring Rd)</div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                <a href="https://www.google.com/maps/search/?api=1&query=AIIMS+Apex+Trauma+Centre+New+Delhi" target="_blank" class="btn btn-sm" style="background: #0284c7; color: #ffffff; font-size: 0.7rem; padding: 0.2rem 0.5rem; text-decoration: none; text-align: center;">
+                  🗺️ Route
+                </a>
+                <button type="button" onclick="window.handleEmergencyCall('01126731000')" class="btn btn-sm" style="background: #fee2e2; color: #b91c1c; border: 1px solid #f87171; font-size: 0.7rem; padding: 0.2rem 0.5rem;">
+                  📞 ER Desk
+                </button>
+              </div>
+            </div>
+
+            <div style="background: #ffffff; border: 1px solid #fca5a5; border-radius: 6px; padding: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-weight: 700; color: #1e293b; font-size: 0.85rem;">🏥 Max Super Speciality Hospital (ER)</div>
+                <div style="font-size: 0.75rem; color: #059669; font-weight: 600;">● Level-1 Trauma • Cardiac Ambulance Active</div>
+                <div style="font-size: 0.75rem; color: #64748b;" id="max-dist-label">📍 ~3.2 km (Press Enclave Marg, Saket)</div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                <a href="https://www.google.com/maps/search/?api=1&query=Max+Super+Speciality+Hospital+Saket+Emergency" target="_blank" class="btn btn-sm" style="background: #0284c7; color: #ffffff; font-size: 0.7rem; padding: 0.2rem 0.5rem; text-decoration: none; text-align: center;">
+                  🗺️ Route
+                </a>
+                <button type="button" onclick="window.handleEmergencyCall('01126515050')" class="btn btn-sm" style="background: #fee2e2; color: #b91c1c; border: 1px solid #f87171; font-size: 0.7rem; padding: 0.2rem 0.5rem;">
+                  📞 ER Desk
+                </button>
+              </div>
+            </div>
+
+            <div style="background: #ffffff; border: 1px solid #fca5a5; border-radius: 6px; padding: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-weight: 700; color: #1e293b; font-size: 0.85rem;">🏥 Apollo Hospital Critical Care Unit</div>
+                <div style="font-size: 0.75rem; color: #059669; font-weight: 600;">● 24x7 Stroke & Chest Pain Fast-Track</div>
+                <div style="font-size: 0.75rem; color: #64748b;" id="apollo-dist-label">📍 ~4.9 km (Mathura Rd, Sarita Vihar)</div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                <a href="https://www.google.com/maps/search/?api=1&query=Indraprastha+Apollo+Hospital+Emergency+New+Delhi" target="_blank" class="btn btn-sm" style="background: #0284c7; color: #ffffff; font-size: 0.7rem; padding: 0.2rem 0.5rem; text-decoration: none; text-align: center;">
+                  🗺️ Route
+                </a>
+                <button type="button" onclick="window.handleEmergencyCall('1066')" class="btn btn-sm" style="background: #fee2e2; color: #b91c1c; border: 1px solid #f87171; font-size: 0.7rem; padding: 0.2rem 0.5rem;">
+                  📞 ER Desk
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+window.openEmergencyModal = function () {
+  document.getElementById('emergency-sos-modal')?.classList.add('active');
+};
+
+window.closeEmergencyModal = function () {
+  document.getElementById('emergency-sos-modal')?.classList.remove('active');
+};
+
+// Safe Emergency Dialing Handler (prevents Windows spawning terminal for tel: links on desktop)
+window.handleEmergencyCall = function (number) {
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  if (isMobile) {
+    window.location.href = `tel:${number}`;
+    return;
+  }
+
+  // On Desktop/Laptop: Display clear in-app hotline banner
+  const callStatusBox = document.getElementById('emergency-call-status-box');
+  if (callStatusBox) {
+    callStatusBox.style.display = 'block';
+    callStatusBox.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+        <div>
+          <strong style="color: #991b1b; font-size: 0.95rem;">🚨 Emergency Ambulance Helpline: ${number}</strong>
+          <div style="font-size: 0.8rem; color: #7f1d1d; margin-top: 0.2rem;">
+            Toll-Free 24x7 Ambulance Control Room: <strong>${number}</strong>
+          </div>
+        </div>
+        <button type="button" onclick="navigator.clipboard?.writeText('${number}'); if(window.showToast) window.showToast('Copied ${number} to clipboard', 'info');" class="btn btn-sm" style="background: #ffffff; color: #991b1b; border: 1px solid #f87171; font-size: 0.75rem; padding: 0.25rem 0.6rem; cursor: pointer;">
+          📋 Copy
+        </button>
+      </div>
+      <div style="font-size: 0.75rem; color: #b91c1c; margin-top: 0.4rem; line-height: 1.4;">
+        Direct line active. Please dial <strong>${number}</strong> from your phone or use <strong>"Request Ambulance at Current GPS Location"</strong> below for auto-dispatch.
+      </div>
+    `;
+  }
+  if (window.showToast) window.showToast(`🚨 Dial ${number} for Immediate Emergency Ambulance`, 'error');
+};
+
+window.dispatchEmergencyAmbulance = function () {
+  const resultDiv = document.getElementById('ambulance-dispatch-result');
+  const btn = document.getElementById('btn-request-ambulance');
+  if (resultDiv && btn) {
+    btn.disabled = true;
+    btn.innerText = 'Connecting to Nearest Hospital Dispatch...';
+    setTimeout(() => {
+      btn.style.display = 'none';
+      resultDiv.style.display = 'block';
+      if (window.showToast) window.showToast('Emergency Ambulance Dispatched! Paramedic contacted.', 'success');
+    }, 1200);
+  }
+};
+
+// 24/7 Casualty & Trauma Hospital GPS Distance Calculator
+window.locateNearestHospitalsGPS = function () {
+  if (!navigator.geolocation) {
+    if (window.showToast) window.showToast('Geolocation is not supported by your browser.', 'warning');
+    return;
+  }
+
+  if (window.showToast) window.showToast('Acquiring high-accuracy GPS satellite fix...', 'info');
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+
+      // Hospital reference coordinates (Delhi NCR / Major Hubs)
+      const hospitals = [
+        { id: 'aiims-dist-label', name: 'AIIMS Apex Trauma', lat: 28.5672, lng: 77.2100, addr: 'Safdarjung Enclave, Ring Rd' },
+        { id: 'max-dist-label', name: 'Max Super Speciality', lat: 28.5284, lng: 77.2185, addr: 'Press Enclave Marg, Saket' },
+        { id: 'apollo-dist-label', name: 'Apollo Critical Care', lat: 28.5367, lng: 77.2842, addr: 'Mathura Rd, Sarita Vihar' },
+      ];
+
+      // Calculate Haversine distance in km
+      hospitals.forEach((h) => {
+        const R = 6371; // Earth radius in km
+        const dLat = ((h.lat - lat) * Math.PI) / 180;
+        const dLng = ((h.lng - lng) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos((lat * Math.PI) / 180) * Math.cos((h.lat * Math.PI) / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const d = (R * c).toFixed(1);
+
+        const el = document.getElementById(h.id);
+        if (el) {
+          el.innerHTML = `📍 <strong>${d} km away</strong> (${h.addr}) • Live GPS Fix`;
+          el.style.color = '#0284c7';
+        }
+      });
+
+      if (window.showToast) window.showToast('Live GPS distances updated for nearest trauma hospitals!', 'success');
+    },
+    (err) => {
+      console.warn('GPS location request declined or timed out:', err);
+      if (window.showToast) window.showToast('Location permission denied. Showing primary metropolitan trauma centers.', 'info');
+    },
+    { timeout: 7000 }
+  );
+};

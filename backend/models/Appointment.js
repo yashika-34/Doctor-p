@@ -25,11 +25,11 @@ const appointmentSchema = new mongoose.Schema(
       index: true,
     },
     startTime: {
-      type: String, // Format: HH:mm (e.g., "10:00")
+      type: String, // Format: HH:mm
       required: [true, 'Start time is required'],
     },
     endTime: {
-      type: String, // Format: HH:mm (e.g., "10:30")
+      type: String, // Format: HH:mm
       default: function () {
         if (!this.startTime) return '10:30';
         const [h, m] = this.startTime.split(':').map(Number);
@@ -38,6 +38,15 @@ const appointmentSchema = new mongoose.Schema(
         const endM = String(endTotal % 60).padStart(2, '0');
         return `${endH}:${endM}`;
       },
+    },
+    consultationType: {
+      type: String,
+      enum: ['In-Clinic Visit', 'Video Consultation'],
+      default: 'In-Clinic Visit',
+    },
+    meetingLink: {
+      type: String,
+      default: '',
     },
     reason: {
       type: String,
@@ -59,6 +68,10 @@ const appointmentSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    prescription: {
+      type: String,
+      default: '',
+    },
     isReviewed: {
       type: Boolean,
       default: false,
@@ -71,7 +84,7 @@ const appointmentSchema = new mongoose.Schema(
   }
 );
 
-// Compatibility virtuals for legacy field names
+// Virtuals
 appointmentSchema.virtual('date').get(function () {
   return this.appointmentDate;
 }).set(function (v) {
@@ -84,19 +97,25 @@ appointmentSchema.virtual('time').get(function () {
   this.startTime = v;
 });
 
-// Auto-generate appointmentId before saving if not present
-appointmentSchema.pre('save', function (next) {
+// Auto-generate realistic appointmentId and video meeting link
+appointmentSchema.pre('save', function () {
   if (!this.appointmentId) {
     const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const rand = Math.floor(1000 + Math.random() * 9000);
     this.appointmentId = `APT-${today}-${rand}`;
   }
-  next();
+  if (!this.meetingLink && this.consultationType === 'Video Consultation') {
+    this.meetingLink = `https://meet.doctorp.com/room/${this.appointmentId}`;
+  }
 });
 
-// Index to prevent double booking active appointments for same doctor, date & start time
+// Compound partial index to prevent double bookings of active slots
 appointmentSchema.index(
-  { doctorId: 1, appointmentDate: 1, startTime: 1, status: 1 }
+  { doctorId: 1, appointmentDate: 1, startTime: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: { $in: ['pending', 'confirmed'] } },
+  }
 );
 
 module.exports = mongoose.model('Appointment', appointmentSchema);

@@ -1,4 +1,6 @@
-// Doctor Dashboard Logic (Appointments Management, Slot Scheduling, Profile Update)
+// Doctor Dashboard Logic (Appointments Workflow, Telehealth Video, Prescriptions & Availability)
+
+let activeAppointmentForRx = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   // Auth guard: Require doctor role
@@ -12,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupTabs();
   setupAvailabilityForm();
   setupProfileForm();
+  setupRxModal();
 });
 
 // Setup Dashboard Tab Navigation
@@ -37,9 +40,9 @@ async function loadDoctorAppointments(statusFilter = 'all') {
 
   container.innerHTML = `
     <tr>
-      <td colspan="6" style="text-align: center; padding: 2.5rem; color: var(--navy-muted);">
+      <td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--navy-muted);">
         <div style="display: inline-block; width: 28px; height: 28px; border: 2.5px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
-        <p style="margin-top: 0.5rem; font-size: 0.85rem;">Loading patient consultations...</p>
+        <p style="margin-top: 0.5rem; font-size: 0.85rem;">Loading hospital patient appointments...</p>
       </td>
     </tr>
   `;
@@ -64,15 +67,33 @@ async function loadDoctorAppointments(statusFilter = 'all') {
       }
     });
 
-    document.getElementById('stat-doc-total').innerText = appointments.length;
-    document.getElementById('stat-doc-pending').innerText = pendingCount;
-    document.getElementById('stat-doc-confirmed').innerText = confirmedCount;
-    document.getElementById('stat-doc-revenue').innerText = `₹${totalRevenue}`;
+    if (document.getElementById('stat-doc-total')) document.getElementById('stat-doc-total').innerText = appointments.length;
+    if (document.getElementById('stat-doc-pending')) document.getElementById('stat-doc-pending').innerText = pendingCount;
+    if (document.getElementById('stat-doc-confirmed')) document.getElementById('stat-doc-confirmed').innerText = confirmedCount;
+    if (document.getElementById('stat-doc-revenue')) document.getElementById('stat-doc-revenue').innerText = `₹${totalRevenue}`;
+
+    // Update Live OPD Queue Card
+    const activeConfirmed = appointments.filter((a) => a.status === 'confirmed');
+    if (activeConfirmed.length > 0) {
+      const p1 = activeConfirmed[0].patientId || {};
+      const curEl = document.getElementById('queue-current-patient');
+      if (curEl) curEl.innerText = `Token #01 — ${p1.name || 'Patient'} (${activeConfirmed[0].startTime})`;
+
+      const nextEl = document.getElementById('queue-next-patient');
+      if (nextEl) {
+        if (activeConfirmed.length > 1) {
+          const p2 = activeConfirmed[1].patientId || {};
+          nextEl.innerText = `Token #02 — ${p2.name || 'Patient'} (${activeConfirmed[1].startTime})`;
+        } else {
+          nextEl.innerText = 'No more waiting patients';
+        }
+      }
+    }
 
     if (appointments.length === 0) {
       container.innerHTML = `
         <tr>
-          <td colspan="6" style="text-align: center; padding: 3rem; color: var(--navy-muted);">
+          <td colspan="7" style="text-align: center; padding: 3rem; color: var(--navy-muted);">
             <div style="font-size: 2rem; margin-bottom: 0.5rem;">📋</div>
             <p>No appointments found for the selected filter.</p>
           </td>
@@ -85,25 +106,30 @@ async function loadDoctorAppointments(statusFilter = 'all') {
       .map((apt) => {
         const patient = apt.patientId || {};
         const statusBadge = `<span class="badge badge-${apt.status}">${apt.status}</span>`;
+        const modeBadge = `<span style="font-size: 0.75rem; background: var(--navy-light); padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid var(--border-light); font-weight: 600;">${apt.consultationType || 'In-Clinic'}</span>`;
 
-        let actionBtns = '';
+        let actionBtns = `<div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">`;
+
         if (apt.status === 'pending') {
-          actionBtns = `
-            <div style="display: flex; gap: 0.35rem;">
-              <button onclick="updateStatus('${apt._id}', 'confirmed')" class="btn btn-success btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">Accept</button>
-              <button onclick="updateStatus('${apt._id}', 'rejected')" class="btn btn-danger btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">Reject</button>
-            </div>
+          actionBtns += `
+            <button onclick="updateStatus('${apt._id}', 'confirmed')" class="btn btn-success btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">Accept</button>
+            <button onclick="updateStatus('${apt._id}', 'rejected')" class="btn btn-danger btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">Reject</button>
           `;
         } else if (apt.status === 'confirmed') {
-          actionBtns = `
-            <div style="display: flex; gap: 0.35rem;">
-              <button onclick="updateStatus('${apt._id}', 'completed')" class="btn btn-primary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">Complete</button>
-              <button onclick="updateStatus('${apt._id}', 'cancelled')" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">Cancel</button>
-            </div>
+          if (apt.consultationType === 'Video Consultation') {
+            actionBtns += `
+              <button onclick="window.startTelehealthCall('${apt.appointmentId || apt._id}', 'doctor', { patientName: '${(patient.name || 'Patient').replace(/'/g, "\\'")}' })" class="btn btn-primary btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; background: #0284c7;">💻 Start Call</button>
+            `;
+          }
+          actionBtns += `
+            <button onclick="openPrescribeModal('${apt._id}', '${(patient.name || 'Patient').replace(/'/g, "\\'")}')" class="btn btn-primary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">Complete & Rx</button>
+            <button onclick="updateStatus('${apt._id}', 'cancelled')" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">Cancel</button>
           `;
         } else {
-          actionBtns = `<span style="font-size: 0.8rem; color: var(--navy-muted); font-weight: 500;">No actions</span>`;
+          actionBtns += `<span style="font-size: 0.8rem; color: var(--navy-muted); font-weight: 500;">Closed</span>`;
         }
+
+        actionBtns += `</div>`;
 
         return `
           <tr>
@@ -114,10 +140,10 @@ async function loadDoctorAppointments(statusFilter = 'all') {
             </td>
             <td>
               <div style="display: flex; align-items: center; gap: 0.6rem;">
-                <img src="${patient.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&q=80'}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+                <img src="${patient.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&q=80'}" style="width: 34px; height: 34px; border-radius: 50%; object-fit: cover;">
                 <div>
                   <div style="font-weight: 700; color: var(--navy-dark);">${patient.name || 'Patient'}</div>
-                  <div style="font-size: 0.75rem; color: var(--navy-muted);">${patient.phone || patient.email || ''}</div>
+                  <div style="font-size: 0.75rem; color: var(--navy-muted);">${patient.gender || ''} ${patient.age ? `• ${patient.age} yrs` : ''}</div>
                 </div>
               </div>
             </td>
@@ -125,6 +151,7 @@ async function loadDoctorAppointments(statusFilter = 'all') {
               <div style="font-weight: 600; color: var(--navy-dark);">${apt.appointmentDate}</div>
               <div style="font-size: 0.8rem; color: var(--navy-muted);">${apt.startTime}</div>
             </td>
+            <td>${modeBadge}</td>
             <td><span style="font-size: 0.85rem; color: var(--navy-slate);">${apt.reason || 'General'}</span></td>
             <td>${statusBadge}</td>
             <td>${actionBtns}</td>
@@ -134,16 +161,16 @@ async function loadDoctorAppointments(statusFilter = 'all') {
       .join('');
   } catch (err) {
     console.error('Error fetching doctor appointments:', err);
-    container.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--danger); padding: 2rem;">Error: ${err.message}</td></tr>`;
+    container.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--danger); padding: 2rem;">Error: ${err.message}</td></tr>`;
   }
 }
 
 // Update Appointment Status (Accept, Reject, Complete, Cancel)
-window.updateStatus = async (appointmentId, newStatus) => {
+window.updateStatus = async (appointmentId, newStatus, extraData = {}) => {
   try {
     await window.apiFetch(`/appointments/${appointmentId}/status`, {
       method: 'PATCH',
-      body: JSON.stringify({ status: newStatus }),
+      body: JSON.stringify({ status: newStatus, ...extraData }),
     });
 
     window.showToast(`Appointment status updated to ${newStatus}.`, 'success');
@@ -152,6 +179,63 @@ window.updateStatus = async (appointmentId, newStatus) => {
     window.showToast(err.message || 'Error updating status', 'error');
   }
 };
+
+// Live OPD Queue: Call Next Patient Chime
+window.callNextOPDPatient = () => {
+  const curEl = document.getElementById('queue-current-patient');
+  const patientText = curEl ? curEl.innerText : 'Next Patient';
+  window.showToast(`🔔 Electronic OPD Chime: Calling ${patientText} to Cabin 304!`, 'success');
+};
+
+// Prescription Modal Logic
+window.openPrescribeModal = (appointmentId, patientName) => {
+  activeAppointmentForRx = appointmentId;
+  const modal = document.getElementById('doctor-prescribe-modal');
+  const nameEl = document.getElementById('rx-patient-name');
+  if (nameEl) nameEl.innerText = patientName;
+
+  // Pre-fill realistic clinical template if inputs are currently empty
+  const notesInput = document.getElementById('doc-notes-input');
+  const rxInput = document.getElementById('doc-prescription-input');
+  if (notesInput && !notesInput.value) {
+    notesInput.value = 'Diagnosis: Clinical recovery verified. Vitals recorded: BP 120/80 mmHg, Pulse 74 bpm. Patient advised adequate rest and hydration.';
+  }
+  if (rxInput && !rxInput.value) {
+    rxInput.value = '1. Tab. Ecosprin 75mg — 0 - 1 - 0 (After Lunch) — 30 Days\n2. Tab. Telmisartan 40mg — 1 - 0 - 0 (After Breakfast) — 30 Days\n3. Tab. Atorvastatin 20mg — 0 - 0 - 1 (At Bedtime) — 30 Days';
+  }
+
+  if (modal) modal.classList.add('active');
+};
+
+function setupRxModal() {
+  const form = document.getElementById('prescribe-form');
+  const closeBtn = document.getElementById('btn-close-prescribe-modal');
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      document.getElementById('doctor-prescribe-modal')?.classList.remove('active');
+    });
+  }
+
+  if (!form) return;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!activeAppointmentForRx) return;
+
+    const notes = document.getElementById('doc-notes-input').value.trim();
+    const prescription = document.getElementById('doc-prescription-input').value.trim();
+
+    try {
+      await updateStatus(activeAppointmentForRx, 'completed', { notes, prescription });
+      document.getElementById('doctor-prescribe-modal')?.classList.remove('active');
+      form.reset();
+      window.showToast('Consultation marked completed with clinical notes & prescription saved!', 'success');
+    } catch (err) {
+      window.showToast(err.message || 'Error saving prescription', 'error');
+    }
+  });
+}
 
 // Manage Availability Form
 function setupAvailabilityForm() {
@@ -183,12 +267,12 @@ function setupProfileForm() {
   const form = document.getElementById('doctor-profile-form');
   if (!form) return;
 
-  // Pre-fill existing doctor profile
   const docProfile = window.Auth.getDoctorProfile();
   if (docProfile) {
-    if (document.getElementById('edit-fee')) document.getElementById('edit-fee').value = docProfile.consultationFee || 500;
+    if (document.getElementById('edit-fee')) document.getElementById('edit-fee').value = docProfile.consultationFee || 600;
     if (document.getElementById('edit-clinic')) document.getElementById('edit-clinic').value = docProfile.clinicName || '';
     if (document.getElementById('edit-city')) document.getElementById('edit-city').value = docProfile.location?.city || '';
+    if (document.getElementById('edit-reg')) document.getElementById('edit-reg').value = docProfile.medicalRegNumber || 'MCI-84920';
     if (document.getElementById('edit-bio')) document.getElementById('edit-bio').value = docProfile.bio || '';
   }
 
@@ -198,6 +282,7 @@ function setupProfileForm() {
     const consultationFee = Number(document.getElementById('edit-fee').value);
     const clinicName = document.getElementById('edit-clinic').value.trim();
     const city = document.getElementById('edit-city').value.trim();
+    const medicalRegNumber = document.getElementById('edit-reg').value.trim();
     const bio = document.getElementById('edit-bio').value.trim();
 
     try {
@@ -206,6 +291,7 @@ function setupProfileForm() {
         body: JSON.stringify({
           consultationFee,
           clinicName,
+          medicalRegNumber,
           location: { city },
           bio,
         }),

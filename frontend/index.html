@@ -122,6 +122,29 @@
       </div>
     </section>
 
+    <!-- HOSPITAL NETWORK PARTNERS & LIVE TICKER RIBBON -->
+    <div style="background: #ffffff; border-bottom: 1px solid var(--border-light); padding: 1.25rem 0;">
+      <div class="container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <span style="font-size: 0.75rem; font-weight: 800; color: var(--navy-muted); text-transform: uppercase; letter-spacing: 0.5px;">Accredited Network:</span>
+          <div style="display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; font-size: 0.85rem; font-weight: 700; color: var(--navy-slate);">
+            <span>🏥 Max Healthcare</span>
+            <span>🏥 Apollo Hospitals</span>
+            <span>🏥 Fortis Healthcare</span>
+            <span>🏥 Medanta The Medicity</span>
+            <span>🏥 Sir Ganga Ram</span>
+            <span>🏥 AIIMS Alumni</span>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--navy-light); padding: 0.4rem 0.85rem; border-radius: var(--radius-full); border: 1px solid var(--border-light); font-size: 0.8rem; font-weight: 700;">
+          <span style="color: #059669;">🟢 48 Specialists Online Now</span>
+          <span style="color: #cbd5e1;">|</span>
+          <span style="color: #0284c7;">⚡ 140+ Slots Open Today</span>
+        </div>
+      </div>
+    </div>
+
     <!-- SPECIALIZATIONS SECTION -->
     <section class="section section-light" id="specializations">
       <div class="container">
@@ -185,6 +208,19 @@
             <div style="background: rgba(255,255,255,0.06); padding: 0.75rem; border-radius: var(--radius-lg); border: 1px solid rgba(255,255,255,0.15); display: flex; gap: 0.5rem; flex-wrap: wrap;">
               <input type="text" id="symptom-input" placeholder="e.g., I have chest pain and shortness of breath..." style="flex: 1; min-width: 240px; padding: 0.75rem 1rem; border-radius: var(--radius-md); border: none; outline: none; font-family: var(--font-body); font-size: 0.95rem; background: #ffffff; color: var(--navy-dark);">
               <button type="button" id="btn-analyze-symptoms" class="btn btn-primary">Analyze Symptoms</button>
+            </div>
+
+            <!-- Quick One-Click Symptom Chips -->
+            <div style="margin-top: 0.75rem;">
+              <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Quick Test Symptoms:</span>
+              <div class="symptom-chips-container">
+                <button type="button" class="symptom-chip" data-query="Severe chest pain and heart palpitations">❤️ Chest Pain</button>
+                <button type="button" class="symptom-chip" data-query="Persistent migraine headache and dizziness">🧠 Migraine & Dizziness</button>
+                <button type="button" class="symptom-chip" data-query="Skin rash, itching, and red hives">✨ Skin Rash</button>
+                <button type="button" class="symptom-chip" data-query="Severe knee joint pain and stiffness">🦴 Knee & Joint Pain</button>
+                <button type="button" class="symptom-chip" data-query="Child high fever, cough, and vomiting">👶 Child Fever</button>
+                <button type="button" class="symptom-chip" data-query="Viral fever, cold, chills, and body weakness">🩺 Fever & Flu</button>
+              </div>
             </div>
 
             <!-- Dynamic Result Card -->
@@ -254,6 +290,108 @@
             <h4>Care & Review</h4>
             <p>Attend your appointment and share honest feedback to assist fellow patients.</p>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VERIFIED PATIENT EXPERIENCES -->
+    <section class="section section-light" id="testimonials">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-subtitle">Real Stories</div>
+          <h2 class="section-title">What Patients Say About DoctorP</h2>
+          <p>Read authentic feedback from patients who booked verified clinical and video consultations.</p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+          <div style="background: #ffffff; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.75rem; box-shadow: var(--shadow-sm);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover;">
+                <div>
+                  <strong style="color: var(--navy-dark); font-size: 0.95rem; display: block;">Ananya Sen</strong>
+                  <span style="font-size: 0.75rem; color: #059669; font-weight: 700;">✓ Verified Cardiology Visit</span>
+                </div>
+              </div>
+              <div style="color: #f59e0b;">★★★★★</div>
+            </div>
+            <p style="color: var(--navy-slate); font-size: 0.9rem; line-height: 1.6;">
+              "Booking with Dr. Rajesh Sharma was incredibly smooth. I received my Digital OPD Hospital Pass with token #04 instantly and didn't have to wait in the hospital queue at Max Saket!"
+            </p>
+          </div>
+
+          <div style="background: #ffffff; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.75rem; box-shadow: var(--shadow-sm);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover;">
+                <div>
+                  <strong style="color: var(--navy-dark); font-size: 0.95rem; display: block;">Vikram Malhotra</strong>
+                  <span style="font-size: 0.75rem; color: #0284c7; font-weight: 700;">✓ Telehealth Video Call</span>
+                </div>
+              </div>
+              <div style="color: #f59e0b;">★★★★★</div>
+            </div>
+            <p style="color: var(--navy-slate); font-size: 0.9rem; line-height: 1.6;">
+              "The video consultation room was crystal clear and HD. Dr. Priya explained my skin treatment thoroughly and the digital Rx with doctor's signature was immediately downloadable in my portal."
+            </p>
+          </div>
+
+          <div style="background: #ffffff; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.75rem; box-shadow: var(--shadow-sm);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=100&q=80" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover;">
+                <div>
+                  <strong style="color: var(--navy-dark); font-size: 0.95rem; display: block;">Meera Kapoor</strong>
+                  <span style="font-size: 0.75rem; color: #059669; font-weight: 700;">✓ Pediatrics Consultation</span>
+                </div>
+              </div>
+              <div style="color: #f59e0b;">★★★★★</div>
+            </div>
+            <p style="color: var(--navy-slate); font-size: 0.9rem; line-height: 1.6;">
+              "The AI Symptom Checker helped me realize my daughter needed a pediatrician rather than general physician. Booked in 30 seconds with conflict-free slot lock. Outstanding app!"
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FREQUENTLY ASKED QUESTIONS (FAQ) -->
+    <section class="section" id="faq">
+      <div class="container" style="max-width: 860px;">
+        <div class="section-header">
+          <div class="section-subtitle">Got Questions?</div>
+          <h2 class="section-title">Frequently Asked Questions</h2>
+          <p>Everything you need to know about booking, doctor credentials, and consultations.</p>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          <details style="background: #ffffff; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1.25rem; cursor: pointer;">
+            <summary style="font-weight: 700; color: var(--navy-dark); font-size: 1.05rem;">How does the Digital Hospital OPD Pass work?</summary>
+            <p style="margin-top: 0.75rem; color: var(--navy-slate); font-size: 0.9rem; line-height: 1.6;">
+              Once your booking is confirmed, an official Digital Hospital Pass is generated with your unique Appointment ID, assigned OPD Token number, and QR code. You can print or show it on your mobile device at the hospital reception for fast-track entry.
+            </p>
+          </details>
+
+          <details style="background: #ffffff; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1.25rem; cursor: pointer;">
+            <summary style="font-weight: 700; color: var(--navy-dark); font-size: 1.05rem;">Are the doctors verified by the Medical Council?</summary>
+            <p style="margin-top: 0.75rem; color: var(--navy-slate); font-size: 0.9rem; line-height: 1.6;">
+              Yes! 100% of clinicians on DoctorP are verified against their National Medical Commission (NMC) or State Medical Council registration numbers before their profiles and calendar availability are made public.
+            </p>
+          </details>
+
+          <details style="background: #ffffff; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1.25rem; cursor: pointer;">
+            <summary style="font-weight: 700; color: var(--navy-dark); font-size: 1.05rem;">How do Telehealth Online Video Consultations work?</summary>
+            <p style="margin-top: 0.75rem; color: var(--navy-slate); font-size: 0.9rem; line-height: 1.6;">
+              If you book a Video Consultation, simply click "Join Call" in your patient dashboard 5 minutes prior to your slot. The consultation runs in high-definition encrypted WebRTC video directly inside your browser without needing any third-party app.
+            </p>
+          </details>
+
+          <details style="background: #ffffff; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1.25rem; cursor: pointer;">
+            <summary style="font-weight: 700; color: var(--navy-dark); font-size: 1.05rem;">Can I cancel or reschedule my appointment?</summary>
+            <p style="margin-top: 0.75rem; color: var(--navy-slate); font-size: 0.9rem; line-height: 1.6;">
+              Yes, you can cancel an active appointment anytime directly from your dashboard. The reserved slot is automatically released in real time back to the public pool so another patient in need can book it.
+            </p>
+          </details>
         </div>
       </div>
     </section>

@@ -7,7 +7,7 @@ const Slot = require('../models/Slot');
 // @access  Protected (Patient, Doctor, Admin)
 const createAppointment = async (req, res, next) => {
   try {
-    const { doctorId, appointmentDate, date, startTime, time, reason, notes } = req.body;
+    const { doctorId, appointmentDate, date, startTime, time, reason, notes, consultationType } = req.body;
     const patientId = req.user._id;
 
     const aptDate = appointmentDate || date;
@@ -23,7 +23,6 @@ const createAppointment = async (req, res, next) => {
     // Server-side validation: Reject past bookings
     const appointmentDateTime = new Date(`${aptDate}T${aptTime}:00`);
     const now = new Date();
-    // Allow same day, but if full datetime is in the past by more than 10 minutes:
     if (appointmentDateTime < new Date(now.getTime() - 10 * 60 * 1000)) {
       return res.status(400).json({
         success: false,
@@ -58,6 +57,7 @@ const createAppointment = async (req, res, next) => {
       patientId,
       appointmentDate: aptDate,
       startTime: aptTime,
+      consultationType: consultationType || 'In-Clinic Visit',
       reason: reason || 'General Healthcare Consultation',
       notes: notes || '',
       fee: doctor.consultationFee || 500,
@@ -246,6 +246,7 @@ const updateAppointmentStatus = async (req, res, next) => {
 
     appointment.status = status;
     if (notes) appointment.notes = notes;
+    if (req.body.prescription) appointment.prescription = req.body.prescription;
     await appointment.save();
 
     // If rejected or cancelled, free up the slot

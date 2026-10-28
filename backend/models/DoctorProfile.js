@@ -19,6 +19,11 @@ const doctorProfileSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
+    medicalRegNumber: {
+      type: String,
+      default: 'MCI-84920-IND',
+      trim: true,
+    },
     qualifications: [
       {
         type: String,
@@ -28,33 +33,49 @@ const doctorProfileSchema = new mongoose.Schema(
     experience: {
       type: Number,
       required: true,
-      default: 0,
+      default: 5,
     },
     consultationFee: {
       type: Number,
       required: true,
-      default: 500,
+      default: 600,
     },
     clinicName: {
       type: String,
-      default: 'City Health Clinic',
+      default: 'Apollo Health Supercentre',
       trim: true,
     },
     location: {
-      address: { type: String, default: 'Main Health Boulevard' },
+      address: { type: String, default: 'Sarita Vihar, Mathura Road' },
       city: { type: String, default: 'New Delhi', index: true },
+      state: { type: String, default: 'Delhi' },
+      pincode: { type: String, default: '110076' },
       coordinates: {
-        lat: { type: Number, default: 28.6139 },
-        lng: { type: Number, default: 77.209 },
+        lat: { type: Number, default: 28.5355 },
+        lng: { type: Number, default: 77.291 },
       },
+    },
+    languages: {
+      type: [String],
+      default: ['English', 'Hindi'],
+    },
+    consultationModes: {
+      type: [String],
+      default: ['In-Clinic Visit', 'Video Consultation'],
     },
     bio: {
       type: String,
-      default: 'Dedicated healthcare professional committed to providing compassionate and patient-centered medical care.',
+      default: 'Distinguished healthcare practitioner with profound clinical acumen, dedicated to comprehensive patient care, proactive diagnostics, and personalized treatment therapies.',
     },
+    awards: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
     profileImage: {
       type: String,
-      default: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80',
+      default: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=400&q=80',
     },
     approvalStatus: {
       type: String,
@@ -72,13 +93,13 @@ const doctorProfileSchema = new mongoose.Schema(
     },
     rating: {
       type: Number,
-      default: 4.8,
+      default: 4.9,
       min: 0,
       max: 5,
     },
     totalReviews: {
       type: Number,
-      default: 12,
+      default: 34,
     },
     availableDays: [
       {
@@ -88,7 +109,7 @@ const doctorProfileSchema = new mongoose.Schema(
     ],
     timeSlots: [
       {
-        type: String, // e.g. "09:00", "10:00", "11:00", "14:00", "15:00", "16:00"
+        type: String, // e.g. "09:00", "09:30", "10:00", ...
       },
     ],
     slotDuration: {
@@ -103,7 +124,7 @@ const doctorProfileSchema = new mongoose.Schema(
   }
 );
 
-// Compatibility getters/setters for legacy fields
+// Compatibility getters & setters
 doctorProfileSchema.virtual('specialty').get(function () {
   return this.specialization;
 }).set(function (v) {
