@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
   loadPatientStats();
   loadPatientAppointments();
   loadPatientVitals();
+  loadPatientMedicalRecords();
+  setupUploadRecordForm();
   setupReviewModal();
 
   // Auto-open Rx Explainer if URL has demo=rx or rx=true
@@ -190,9 +192,27 @@ function renderAppointmentsTable() {
     return;
   }
 
+  const currentUser = window.Auth ? window.Auth.getUser() : null;
+  const isDoctorRole = currentUser && currentUser.role === 'doctor';
+
+  // Adapt table header if doctor is viewing
+  const colHeader = document.querySelector('table.custom-table thead th:nth-child(2)');
+  if (colHeader) {
+    colHeader.innerText = isDoctorRole ? 'Patient Details' : 'Doctor & Hospital';
+  }
+
   container.innerHTML = filtered
     .map((apt) => {
       const doc = apt.doctorId || {};
+      const pat = apt.patientId || {};
+      const partnerName = isDoctorRole ? (pat.name || 'Patient') : (doc.name || 'Doctor');
+      const partnerSub = isDoctorRole 
+        ? `${pat.gender || 'Patient'} ${pat.age ? `• ${pat.age} yrs` : ''} ${pat.phone ? `• ${pat.phone}` : ''}`
+        : (doc.clinicName || doc.specialization || 'Medicine');
+      const partnerImg = isDoctorRole
+        ? (pat.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80')
+        : (doc.profileImage || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=100&q=80');
+
       const statusBadge = `<span class="badge badge-${apt.status}">${apt.status}</span>`;
       const modeBadge = `<span style="font-size: 0.75rem; background: var(--navy-light); padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid var(--border-light); font-weight: 600;">${apt.consultationType || 'In-Clinic'}</span>`;
 
@@ -214,9 +234,21 @@ function renderAppointmentsTable() {
         </button>
       `;
 
-      // Rx / Notes button & direct AI Explainer button
+      // Calendar sync buttons for active appointments
+      if (apt.status === 'confirmed' || apt.status === 'pending') {
+        actionHtml += `
+          <button onclick="window.downloadIcsFile(currentAppointmentsList.find(a => (a._id === '${apt._id}' || a.appointmentId === '${apt.appointmentId}')))" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" title="Download .ICS Calendar Event">
+            📅 Cal
+          </button>
+        `;
+      }
+
+      // Rx / Notes button, Official Printable Prescription, & direct AI Explainer button
       if (apt.prescription || apt.notes) {
         actionHtml += `
+          <button onclick="window.openPrescriptionViewer(currentAppointmentsList.find(a => (a._id === '${apt._id}' || a.appointmentId === '${apt.appointmentId}')))" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; border-color: #0d9488; color: #0d9488; font-weight: 700;" title="Download Official Doctor Prescription (PDF)">
+            📄 Download Rx
+          </button>
           <button onclick="viewPrescription('${apt._id}')" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; border-color: #059669; color: #059669;" title="View Doctor Prescription">
             💊 Rx Slip
           </button>
@@ -227,13 +259,13 @@ function renderAppointmentsTable() {
       }
 
       // Review button
-      if (apt.status === 'completed' && !apt.isReviewed) {
+      if (apt.status === 'completed' && !apt.isReviewed && !isDoctorRole) {
         actionHtml += `
           <button onclick="openReviewModal('${apt._id}', '${doc.name || 'Doctor'}')" class="btn btn-primary btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
             ★ Review
           </button>
         `;
-      } else if (apt.isReviewed) {
+      } else if (apt.isReviewed && !isDoctorRole) {
         actionHtml += `<span style="font-size: 0.75rem; color: #059669; font-weight: 700;">✓ Reviewed</span>`;
       }
 
@@ -257,10 +289,10 @@ function renderAppointmentsTable() {
           </td>
           <td>
             <div style="display: flex; align-items: center; gap: 0.75rem;">
-              <img src="${doc.profileImage || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=100&q=80'}" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover;">
+              <img src="${partnerImg}" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover;">
               <div>
-                <div style="font-weight: 700; color: var(--navy-dark);">${doc.name || 'Doctor'}</div>
-                <div style="font-size: 0.75rem; color: var(--navy-muted);">${doc.clinicName || doc.specialization || 'Medicine'}</div>
+                <div style="font-weight: 700; color: var(--navy-dark);">${partnerName}</div>
+                <div style="font-size: 0.75rem; color: var(--navy-muted);">${partnerSub}</div>
               </div>
             </div>
           </td>
@@ -854,6 +886,161 @@ function setupReviewModal() {
       loadPatientAppointments();
     } catch (err) {
       window.showToast(err.message || 'Error submitting review', 'error');
+    }
+  });
+}
+
+// ==========================================================================
+// Patient Medical Records & Diagnostic Vault Logic
+// ==========================================================================
+
+let allPatientRecords = [];
+let currentRecordCategoryFilter = 'all';
+
+async function loadPatientMedicalRecords() {
+  const grid = document.getElementById('patient-records-grid');
+  if (!grid) return;
+
+  grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #64748b;">Loading medical records...</div>';
+
+  try {
+    const data = await window.apiFetch('/patients/records');
+    allPatientRecords = data.records || [];
+    renderPatientRecords(allPatientRecords);
+  } catch (err) {
+    if (grid) grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #ef4444;">${err.message || 'Error loading records'}</div>`;
+  }
+}
+
+window.filterRecordsByCategory = (category, btn) => {
+  currentRecordCategoryFilter = category;
+  document.querySelectorAll('.rec-filter-btn').forEach((b) => {
+    b.style.background = '#f1f5f9';
+    b.style.color = '#334155';
+    b.classList.remove('active');
+  });
+  if (btn) {
+    btn.style.background = '#0284c7';
+    btn.style.color = '#ffffff';
+    btn.classList.add('active');
+  }
+
+  const filtered = category === 'all'
+    ? allPatientRecords
+    : allPatientRecords.filter((r) => r.recordType === category);
+
+  renderPatientRecords(filtered);
+};
+
+function renderPatientRecords(records) {
+  const grid = document.getElementById('patient-records-grid');
+  if (!grid) return;
+
+  if (records.length === 0) {
+    grid.innerHTML = `
+      <div style="grid-column: 1/-1; text-align: center; padding: 3rem 1rem; color: #64748b;">
+        <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">📁</div>
+        <h4 style="margin: 0; color: #0f172a;">No medical documents found</h4>
+        <p style="font-size: 0.85rem; margin: 0.25rem 0 1rem;">Click 'Upload Medical Record' to save test reports, scans, and past prescriptions.</p>
+        <button type="button" onclick="openUploadRecordModal()" class="btn btn-primary btn-sm" style="background: #0284c7;">➕ Upload First Document</button>
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = records.map((rec) => {
+    const isLab = rec.recordType === 'Lab Report';
+    const isScan = rec.recordType === 'Radiology / Scan';
+    const isRx = rec.recordType === 'Prescription';
+    const icon = isLab ? '🧪' : (isScan ? '🩻' : (isRx ? '💊' : '📄'));
+    const badgeBg = isLab ? '#e0f2fe' : (isScan ? '#f3e8ff' : '#dcfce7');
+    const badgeColor = isLab ? '#0369a1' : (isScan ? '#7e22ce' : '#15803d');
+
+    return `
+      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s ease, box-shadow 0.2s ease;">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+            <span style="font-size: 0.72rem; font-weight: 700; background: ${badgeBg}; color: ${badgeColor}; padding: 3px 8px; border-radius: 9999px; text-transform: uppercase;">
+              ${icon} ${rec.recordType || 'Medical Report'}
+            </span>
+            <button type="button" onclick="window.deleteMedicalRecord('${rec._id}')" style="background: none; border: none; color: #94a3b8; font-size: 0.85rem; cursor: pointer; padding: 2px;" title="Delete Record">✕</button>
+          </div>
+
+          <h4 style="margin: 0 0 0.25rem; font-size: 1.05rem; color: #0f172a; font-weight: 700;">${rec.title}</h4>
+          <div style="font-size: 0.82rem; color: #64748b; margin-bottom: 0.75rem;">
+            Facility: <strong>${rec.doctorOrLab || 'Diagnostic Lab'}</strong><br>
+            Date: <strong>${rec.recordDate || 'Recent'}</strong>
+          </div>
+
+          <div style="background: #f8fafc; border-left: 3px solid #0284c7; padding: 0.65rem 0.85rem; border-radius: 0 8px 8px 0; font-size: 0.84rem; color: #334155; line-height: 1.45; margin-bottom: 1rem;">
+            ${rec.summary || 'Clinical observation logged.'}
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; justify-content: flex-end; border-top: 1px solid #f1f5f9; padding-top: 0.75rem;">
+          <a href="${rec.fileUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" style="font-size: 0.75rem; padding: 0.35rem 0.75rem; border-color: #0284c7; color: #0284c7; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+            👁️ View Document
+          </a>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+window.openUploadRecordModal = () => {
+  const modal = document.getElementById('upload-record-modal');
+  const dateInput = document.getElementById('rec-date');
+  if (dateInput && !dateInput.value) dateInput.value = new Date().toISOString().slice(0, 10);
+  if (modal) modal.classList.add('active');
+};
+
+window.closeUploadRecordModal = () => {
+  const modal = document.getElementById('upload-record-modal');
+  if (modal) modal.classList.remove('active');
+};
+
+window.deleteMedicalRecord = async (recordId) => {
+  if (!confirm('Are you sure you want to remove this medical document?')) return;
+  try {
+    await window.apiFetch(`/patients/records/${recordId}`, { method: 'DELETE' });
+    window.showToast('Medical record deleted successfully', 'success');
+    loadPatientMedicalRecords();
+  } catch (err) {
+    window.showToast(err.message || 'Error deleting record', 'error');
+  }
+};
+
+function setupUploadRecordForm() {
+  const form = document.getElementById('form-upload-record');
+  if (!form) return;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const title = document.getElementById('rec-title').value.trim();
+    const recordType = document.getElementById('rec-type').value;
+    const recordDate = document.getElementById('rec-date').value;
+    const doctorOrLab = document.getElementById('rec-facility').value.trim() || 'Apollo Diagnostics & Health Labs';
+    const summary = document.getElementById('rec-summary').value.trim() || 'Report uploaded by patient.';
+
+    try {
+      await window.apiFetch('/patients/records', {
+        method: 'POST',
+        body: JSON.stringify({
+          title,
+          recordType,
+          recordDate,
+          doctorOrLab,
+          summary,
+        }),
+      });
+
+      window.showToast('✅ Medical record successfully added to your vault!', 'success');
+      window.closeUploadRecordModal();
+      form.reset();
+      loadPatientMedicalRecords();
+    } catch (err) {
+      window.showToast(err.message || 'Error uploading record', 'error');
     }
   });
 }

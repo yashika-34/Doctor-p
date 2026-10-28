@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadDoctorAppointments();
   setupTabs();
   setupAvailabilityForm();
+  setupWizardForm();
   setupProfileForm();
   setupRxModal();
 });
@@ -63,6 +64,7 @@ async function loadDoctorAppointments(statusFilter = 'all') {
     const query = statusFilter !== 'all' ? `?status=${statusFilter}` : '';
     const data = await window.apiFetch(`/appointments/my${query}`);
     const appointments = data.appointments || [];
+    window.currentDoctorAppointments = appointments;
 
     // Calculate metrics
     let pendingCount = 0;
@@ -122,20 +124,37 @@ async function loadDoctorAppointments(statusFilter = 'all') {
 
         let actionBtns = `<div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">`;
 
+        // Always show Patient Medical Records button if patient ID is known
+        const patId = patient._id || (typeof apt.patientId === 'string' ? apt.patientId : '');
+        if (patId) {
+          actionBtns += `
+            <button onclick="window.viewPatientRecords('${patId}', '${(patient.name || 'Patient').replace(/'/g, "\\'")}')" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" title="View Patient Lab Reports & Medical Records">
+              📁 Records
+            </button>
+          `;
+        }
+
         if (apt.status === 'pending') {
           actionBtns += `
             <button onclick="updateStatus('${apt._id}', 'confirmed')" class="btn btn-success btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">Accept</button>
             <button onclick="updateStatus('${apt._id}', 'rejected')" class="btn btn-danger btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">Reject</button>
           `;
         } else if (apt.status === 'confirmed') {
-          if (apt.consultationType === 'Video Consultation') {
-            actionBtns += `
-              <button onclick="window.startTelehealthCall('${apt.appointmentId || apt._id}', 'doctor', { patientName: '${(patient.name || 'Patient').replace(/'/g, "\\'")}' })" class="btn btn-primary btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; background: #0284c7;">💻 Start Call</button>
-            `;
-          }
           actionBtns += `
-            <button onclick="openPrescribeModal('${apt._id}', '${(patient.name || 'Patient').replace(/'/g, "\\'")}')" class="btn btn-primary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">Complete & Rx</button>
+            <button onclick="window.doctorCallPatient('${apt.appointmentId || apt._id}', '${(patient.name || 'Patient').replace(/'/g, "\\'")}')" class="btn btn-primary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; background: #0284c7; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="Call Patient for Live Consultation">
+              📞 Call Patient
+            </button>
+            <button onclick="openPrescribeModal('${apt._id}', '${(patient.name || 'Patient').replace(/'/g, "\\'")}')" class="btn btn-success btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; background: #059669;">Complete & Rx</button>
+            <button onclick="window.downloadIcsFile(window.currentDoctorAppointments.find(a => (a._id === '${apt._id}' || a.appointmentId === '${apt.appointmentId}')))" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.45rem; font-size: 0.75rem;" title="Download .ICS Calendar Invite">
+              📅 Cal
+            </button>
             <button onclick="updateStatus('${apt._id}', 'cancelled')" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">Cancel</button>
+          `;
+        } else if (apt.status === 'completed') {
+          actionBtns += `
+            <button onclick="window.openPrescriptionViewer(window.currentDoctorAppointments.find(a => (a._id === '${apt._id}' || a.appointmentId === '${apt.appointmentId}')))" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; border-color: #0d9488; color: #0d9488; font-weight: 700;" title="View & Print Official Medical Rx">
+              📄 View Rx
+            </button>
           `;
         } else {
           actionBtns += `<span style="font-size: 0.8rem; color: var(--navy-muted); font-weight: 500;">Closed</span>`;
@@ -192,11 +211,112 @@ window.updateStatus = async (appointmentId, newStatus, extraData = {}) => {
   }
 };
 
-// Live OPD Queue: Call Next Patient Chime
+// Web Audio API Hospital Electronic OPD Token Chime (Pure Synthesizer, 0 External Dependencies)
+function playHospitalChime() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+
+    const playTone = (freq, start, duration) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+      
+      gain.gain.setValueAtTime(0, ctx.currentTime + start);
+      gain.gain.linearRampToValueAtTime(0.28, ctx.currentTime + start + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + duration);
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + duration);
+    };
+
+    // Hospital Dual-Tone Ding-Dong Chime: E5 (659Hz) followed by C5 (523Hz)
+    playTone(659.25, 0, 0.45);
+    playTone(523.25, 0.35, 0.75);
+  } catch (e) {
+    console.warn('AudioContext not allowed or supported', e);
+  }
+}
+
+let opdQueueIndex = 1;
+const sampleQueuePatients = [
+  'Rahul Sharma (10:00 AM)',
+  'Anita Roy (10:30 AM)',
+  'Amit Verma (11:00 AM)',
+  'Pooja Nair (11:30 AM)',
+  'Vikram Malhotra (12:00 PM)',
+  'Sunita Patel (12:30 PM)',
+];
+
+// Live OPD Queue: Call Next Patient Chime & Token Advance
 window.callNextOPDPatient = () => {
+  playHospitalChime();
+
   const curEl = document.getElementById('queue-current-patient');
-  const patientText = curEl ? curEl.innerText : 'Next Patient';
-  window.showToast(`🔔 Electronic OPD Chime: Calling ${patientText} to Cabin 304!`, 'success');
+  const nextEl = document.getElementById('queue-next-patient');
+
+  const currentPatient = sampleQueuePatients[opdQueueIndex - 1] || `Patient #${opdQueueIndex}`;
+  const nextPatient = sampleQueuePatients[opdQueueIndex] || 'No more waiting patients';
+
+  if (curEl) {
+    curEl.innerText = `Token #${String(opdQueueIndex).padStart(2, '0')} — ${currentPatient}`;
+    curEl.style.transform = 'scale(1.05)';
+    curEl.style.transition = 'transform 0.25s ease';
+    setTimeout(() => { curEl.style.transform = 'scale(1)'; }, 300);
+  }
+  if (nextEl) {
+    nextEl.innerText = nextPatient !== 'No more waiting patients' 
+      ? `Token #${String(opdQueueIndex + 1).padStart(2, '0')} — ${nextPatient}`
+      : 'No more waiting patients';
+  }
+
+  window.showToast(`🔔 Electronic OPD Chime: Calling Token #${String(opdQueueIndex).padStart(2, '0')} (${currentPatient}) to Cabin 304!`, 'success');
+  opdQueueIndex++;
+  if (opdQueueIndex > sampleQueuePatients.length) {
+    opdQueueIndex = 1; // loop back
+  }
+};
+
+// Export Doctor Consultations to CSV / Excel
+window.exportDoctorAppointmentsCSV = () => {
+  const apts = window.currentDoctorAppointments || [];
+  if (apts.length === 0) {
+    window.showToast('No consultations available to export.', 'warning');
+    return;
+  }
+
+  const headers = ['Booking ID', 'Patient Name', 'Phone', 'Date', 'Time', 'Mode', 'Fee (INR)', 'Reason', 'Status', 'Diagnosis Notes', 'Prescription'];
+  const rows = apts.map((apt) => {
+    const p = apt.patientId || {};
+    return [
+      `"${apt.appointmentId || apt._id}"`,
+      `"${p.name || 'Patient'}"`,
+      `"${p.phone || ''}"`,
+      `"${apt.appointmentDate || ''}"`,
+      `"${apt.startTime || ''}"`,
+      `"${apt.consultationType || 'In-Clinic'}"`,
+      `"${apt.fee || 0}"`,
+      `"${(apt.reason || '').replace(/"/g, '""')}"`,
+      `"${apt.status || ''}"`,
+      `"${(apt.notes || '').replace(/"/g, '""')}"`,
+      `"${(apt.prescription || '').replace(/"/g, '""')}"`,
+    ];
+  });
+
+  const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement('a');
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', `DoctorP_Consultations_Report_${new Date().toISOString().slice(0, 10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.showToast('✅ Consultations Report (.CSV) downloaded successfully!', 'success');
 };
 
 // Prescription Modal Logic
@@ -316,6 +436,107 @@ function setupProfileForm() {
       window.showToast('Profile updated successfully!', 'success');
     } catch (err) {
       window.showToast(err.message || 'Error updating profile', 'error');
+    }
+  });
+}
+
+// Doctor View Patient Medical Records
+window.viewPatientRecords = async (patientId, patientName) => {
+  const modal = document.getElementById('doctor-patient-records-modal');
+  const nameEl = document.getElementById('doc-rec-patient-name');
+  const listEl = document.getElementById('doc-patient-records-list');
+
+  if (nameEl) nameEl.innerText = patientName;
+  if (listEl) listEl.innerHTML = '<div style="text-align: center; padding: 2rem; color: #64748b;">Loading health records...</div>';
+  if (modal) modal.classList.add('active');
+
+  try {
+    const data = await window.apiFetch(`/patients/${patientId}/records`);
+    const records = data.records || [];
+
+    if (records.length === 0) {
+      if (listEl) listEl.innerHTML = '<div style="text-align: center; padding: 2rem; color: #64748b;">No medical reports uploaded by patient yet.</div>';
+      return;
+    }
+
+    if (listEl) {
+      listEl.innerHTML = records.map((rec) => `
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.35rem;">
+            <div>
+              <span style="font-size: 0.72rem; background: #e0f2fe; color: #0284c7; padding: 2px 8px; border-radius: 9999px; font-weight: 700; text-transform: uppercase;">${rec.recordType || 'Lab Report'}</span>
+              <h4 style="margin: 0.35rem 0 0.15rem; color: #0f172a; font-size: 1rem;">${rec.title}</h4>
+              <div style="font-size: 0.8rem; color: #64748b;">Facility: <strong>${rec.doctorOrLab || 'Diagnostic Lab'}</strong> • Date: ${rec.recordDate || 'Recent'}</div>
+            </div>
+            <a href="${rec.fileUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" style="font-size: 0.75rem; padding: 0.3rem 0.65rem;">
+              👁️ View Report
+            </a>
+          </div>
+          <p style="margin: 0.5rem 0 0; font-size: 0.85rem; color: #334155; line-height: 1.4; background: #f8fafc; padding: 0.6rem; border-radius: 8px;">
+            <strong>Key Findings:</strong> ${rec.summary || 'Normal physiological markers observed.'}
+          </p>
+        </div>
+      `).join('');
+    }
+  } catch (err) {
+    if (listEl) listEl.innerHTML = `<div style="text-align: center; padding: 2rem; color: #ef4444;">${err.message || 'Error loading records'}</div>`;
+  }
+};
+
+window.closeDoctorRecordsModal = () => {
+  const modal = document.getElementById('doctor-patient-records-modal');
+  if (modal) modal.classList.remove('active');
+};
+
+// Recurring Batch Slot Generator Wizard Form
+function setupWizardForm() {
+  const form = document.getElementById('doctor-wizard-form');
+  const startInput = document.getElementById('wizard-start-date');
+  const endInput = document.getElementById('wizard-end-date');
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const nextTwoWeeks = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+
+  if (startInput && !startInput.value) startInput.value = todayStr;
+  if (endInput && !endInput.value) endInput.value = nextTwoWeeks;
+
+  if (!form) return;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const startDate = document.getElementById('wizard-start-date').value;
+    const endDate = document.getElementById('wizard-end-date').value;
+    const slotDuration = Number(document.getElementById('wizard-duration').value || 30);
+    const shift1Start = document.getElementById('wizard-shift1-start').value || '09:00';
+    const shift1End = document.getElementById('wizard-shift1-end').value || '13:00';
+    const shift2Start = document.getElementById('wizard-shift2-start').value || '17:00';
+    const shift2End = document.getElementById('wizard-shift2-end').value || '20:00';
+
+    const selectedDays = Array.from(document.querySelectorAll('input[name="avail-days"]:checked')).map((cb) => cb.value);
+    const daysOfWeek = selectedDays.length > 0 ? selectedDays : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+    const shifts = [
+      { start: shift1Start, end: shift1End },
+      { start: shift2Start, end: shift2End },
+    ];
+
+    try {
+      const data = await window.apiFetch('/doctors/slots/batch-generate', {
+        method: 'POST',
+        body: JSON.stringify({
+          startDate,
+          endDate,
+          daysOfWeek,
+          shifts,
+          slotDuration,
+        }),
+      });
+
+      window.showToast(`⚡ ${data.message || 'Batch slots generated!'}`, 'success');
+      loadDoctorAppointments('all');
+    } catch (err) {
+      window.showToast(err.message || 'Error generating batch slots', 'error');
     }
   });
 }

@@ -64,6 +64,25 @@ const appointmentSchema = new mongoose.Schema(
       required: true,
       default: 500,
     },
+    paymentStatus: {
+      type: String,
+      enum: ['pending', 'paid', 'refunded', 'pay_at_clinic'],
+      default: 'paid',
+    },
+    paymentMethod: {
+      type: String,
+      default: 'UPI / Online',
+    },
+    transactionId: {
+      type: String,
+      default: function () {
+        return `TXN-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      },
+    },
+    paidAt: {
+      type: Date,
+      default: Date.now,
+    },
     notes: {
       type: String,
       default: '',

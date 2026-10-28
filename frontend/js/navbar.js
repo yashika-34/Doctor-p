@@ -62,6 +62,16 @@ function renderNavbar() {
   const avatar = (user && user.avatar) || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80';
   const firstName = user ? user.name.replace(/^Dr\.\s*/i, '').split(' ')[0] : '';
 
+  // Apply role-specific body class for navbar theming
+  document.body.classList.remove('role-doctor', 'role-admin', 'role-patient');
+  if (isDoctorDashboard || (role === 'doctor' && !isHome && !isDoctors)) {
+    document.body.classList.add('role-doctor');
+  } else if (isAdminDashboard || (role === 'admin' && !isHome && !isDoctors)) {
+    document.body.classList.add('role-admin');
+  } else if (role === 'patient') {
+    document.body.classList.add('role-patient');
+  }
+
   // 1. TOP HELPLINE / STATUS BANNER
   let topBannerHtml = '';
   if (isDoctorDashboard || (role === 'doctor' && !isHome && !isDoctors)) {

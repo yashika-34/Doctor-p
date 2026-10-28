@@ -7,15 +7,17 @@ const connectDB = require('./config/db');
 
 const PORT = process.env.PORT || 5000;
 
-// Connect to MongoDB and start server
+// Connect to MongoDB and start server immediately
 const startServer = async () => {
   try {
-    await connectDB();
-
     const server = app.listen(PORT, () => {
       console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
       console.log(`🏥 Health Check: http://localhost:${PORT}/api/health`);
       console.log(`🌐 Application UI: http://localhost:${PORT}/`);
+    });
+
+    connectDB().catch((err) => {
+      console.error(`⚠️ MongoDB connection pending or unavailable: ${err.message}`);
     });
 
     // Handle Unhandled Promise Rejections

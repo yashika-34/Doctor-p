@@ -364,6 +364,54 @@ function setupBookingForm(doctorId) {
     const reason = document.getElementById('consultation-reason')?.value.trim() || 'General Consultation';
     const submitBtn = document.getElementById('btn-confirm-booking');
 
+    // Trigger Simulated Razorpay / UPI Payment Gateway
+    if (window.openPaymentGateway) {
+      window.openPaymentGateway({
+        doctor: currentDoctor,
+        fee: currentDoctor?.consultationFee || 500,
+        date: selectedDate,
+        time: selectedTime,
+        consultationType: selectedMode,
+        onSuccess: async (paymentResult) => {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = `<span>Securing Appointment...</span>`;
+
+          try {
+            const data = await window.apiFetch('/appointments', {
+              method: 'POST',
+              body: JSON.stringify({
+                doctorId,
+                appointmentDate: selectedDate,
+                startTime: selectedTime,
+                consultationType: selectedMode,
+                reason,
+                paymentMethod: paymentResult.paymentMethod,
+                paymentStatus: paymentResult.paymentStatus,
+                transactionId: paymentResult.transactionId,
+              }),
+            });
+
+            const appointment = data.appointment;
+            lastConfirmedAppointment = appointment;
+            showBookingConfirmationModal(appointment);
+            window.showToast('🎉 Appointment Confirmed & Payment Receipt Issued!', 'success');
+          } catch (err) {
+            window.showToast(err.message || 'Error booking appointment', 'error');
+            if (err.status === 409) {
+              loadDoctorAvailability(doctorId, selectedDate);
+            }
+          } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<span>Confirm & Book Appointment</span>`;
+          }
+        },
+        onCancel: () => {
+          window.showToast('Payment window closed.', 'info');
+        },
+      });
+      return;
+    }
+
     submitBtn.disabled = true;
     submitBtn.innerHTML = `<span>Booking Appointment...</span>`;
 

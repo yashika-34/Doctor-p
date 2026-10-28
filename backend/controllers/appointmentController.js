@@ -7,7 +7,7 @@ const Slot = require('../models/Slot');
 // @access  Protected (Patient, Doctor, Admin)
 const createAppointment = async (req, res, next) => {
   try {
-    const { doctorId, appointmentDate, date, startTime, time, reason, notes, consultationType } = req.body;
+    const { doctorId, appointmentDate, date, startTime, time, reason, notes, consultationType, paymentMethod, paymentStatus, transactionId } = req.body;
     const patientId = req.user._id;
 
     const aptDate = appointmentDate || date;
@@ -61,7 +61,10 @@ const createAppointment = async (req, res, next) => {
       reason: reason || 'General Healthcare Consultation',
       notes: notes || '',
       fee: doctor.consultationFee || 500,
-      status: 'pending',
+      paymentStatus: paymentStatus || 'paid',
+      paymentMethod: paymentMethod || 'UPI / Online',
+      transactionId: transactionId || `TXN-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      status: paymentStatus === 'pay_at_clinic' ? 'pending' : 'confirmed',
     });
 
     // Update or mark slot as booked
@@ -126,7 +129,7 @@ const getMyAppointments = async (req, res, next) => {
       .skip(skip)
       .limit(limitNum)
       .populate('doctorId', 'name specialization clinicName location profileImage consultationFee rating')
-      .populate('patientId', 'name email phone avatar');
+      .populate('patientId', 'name email phone avatar gender age');
 
     res.status(200).json({
       success: true,

@@ -6,6 +6,8 @@ const {
   updateDoctorApproval,
   getPatients,
   getAppointments,
+  createDoctor,
+  deleteDoctor,
 } = require('../controllers/adminController');
 const { protect } = require('../middleware/authMiddleware');
 const { authorize } = require('../middleware/roleMiddleware');
@@ -15,7 +17,9 @@ router.use(protect, authorize('admin'));
 
 router.get('/dashboard', getAdminDashboard);
 router.get('/doctors', getDoctors);
+router.post('/doctors', createDoctor);
 router.patch('/doctors/:id/approval', updateDoctorApproval);
+router.delete('/doctors/:id', deleteDoctor);
 router.get('/patients', getPatients);
 router.get('/appointments', getAppointments);
 

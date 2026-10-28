@@ -6,6 +6,7 @@ const {
   updateProfile,
   getAvailability,
   updateAvailability,
+  batchGenerateSlots,
   lockSlot,
   getMapDoctors,
 } = require('../Controllers/doctorController');
@@ -22,8 +23,9 @@ router.get('/:id/availability', getAvailability);
 router.post('/profile', protect, authorize('doctor'), updateProfile);
 router.patch('/profile', protect, authorize('doctor'), updateProfile);
 
-// Availability management
+// Availability & recurring slot management
 router.put('/availability', protect, authorize('doctor'), updateAvailability);
+router.post('/slots/batch-generate', protect, authorize('doctor'), batchGenerateSlots);
 
 // Slot locking
 router.post('/slots/lock', protect, lockSlot);

@@ -91,7 +91,12 @@
           <!-- SECTION 1: MANAGE DOCTORS -->
           <div id="sec-admin-doctors" class="admin-section">
             <div style="background: #ffffff; border: 1px solid var(--border-light); border-radius: var(--radius-xl); padding: 1.5rem; box-shadow: var(--shadow-sm);">
-              <h3 style="font-size: 1.25rem; margin-bottom: 1.25rem;">Doctor Verification & Approval</h3>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+                <h3 style="font-size: 1.25rem; margin: 0;">Doctor Verification & Management</h3>
+                <button type="button" class="btn btn-primary btn-sm" onclick="openAddDoctorModal()" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 700; background: #0284c7; box-shadow: 0 4px 12px rgba(2,132,199,0.35);">
+                  ➕ Add New Doctor
+                </button>
+              </div>
               <div class="table-responsive">
                 <table class="custom-table">
                   <thead>
@@ -102,7 +107,7 @@
                       <th>Experience</th>
                       <th>Fee</th>
                       <th>Status</th>
-                      <th>Action</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody id="admin-doctors-tbody">
@@ -139,7 +144,12 @@
           <!-- SECTION 3: ALL APPOINTMENTS -->
           <div id="sec-admin-appointments" class="admin-section" style="display: none;">
             <div style="background: #ffffff; border: 1px solid var(--border-light); border-radius: var(--radius-xl); padding: 1.5rem; box-shadow: var(--shadow-sm);">
-              <h3 style="font-size: 1.25rem; margin-bottom: 1.25rem;">All System Consultations</h3>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+                <h3 style="font-size: 1.25rem; margin: 0;">All System Consultations</h3>
+                <button onclick="exportAdminAppointmentsCSV()" class="btn btn-outline btn-sm" style="display: inline-flex; align-items: center; gap: 4px; font-weight: 700; border-color: var(--primary); color: var(--primary);" title="Download All Bookings as Excel/CSV">
+                  📥 Export CSV
+                </button>
+              </div>
               <div class="table-responsive">
                 <table class="custom-table">
                   <thead>
@@ -165,6 +175,95 @@
 
     </div>
   </main>
+
+  <!-- MODAL: ADD NEW DOCTOR -->
+  <div class="modal-overlay" id="admin-add-doctor-modal">
+    <div class="modal-content" style="max-width: 650px; max-height: 90vh; overflow-y: auto;">
+      <button class="modal-close-btn" onclick="closeAddDoctorModal()">✕</button>
+      
+      <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem;">
+        <div style="width: 44px; height: 44px; border-radius: 50%; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+          🩺
+        </div>
+        <div>
+          <h3 style="font-size: 1.35rem; color: var(--navy-dark); margin: 0;">Add New Hospital Doctor</h3>
+          <p style="font-size: 0.85rem; color: var(--navy-muted); margin: 0;">Register and pre-verify a medical specialist into DoctorP</p>
+        </div>
+      </div>
+
+      <form id="form-admin-add-doctor" onsubmit="handleAdminAddDoctor(event)">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="add-doc-name">Doctor Full Name *</label>
+            <input type="text" id="add-doc-name" class="form-control" placeholder="e.g. Dr. Ananya Roy" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="add-doc-email">Email Address *</label>
+            <input type="email" id="add-doc-email" class="form-control" placeholder="e.g. dr.ananya@doctorp.com" required>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="add-doc-password">Temporary Password</label>
+            <input type="text" id="add-doc-password" class="form-control" value="Doctor@123" placeholder="Doctor@123">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="add-doc-phone">Phone Number</label>
+            <input type="text" id="add-doc-phone" class="form-control" placeholder="+91 98111 22334">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="add-doc-specialization">Specialization *</label>
+            <select id="add-doc-specialization" class="form-control" required>
+              <option value="Cardiology">Cardiology</option>
+              <option value="Pediatrics">Pediatrics</option>
+              <option value="Dermatology">Dermatology</option>
+              <option value="Orthopedics">Orthopedics</option>
+              <option value="General Medicine">General Medicine</option>
+              <option value="Neurology">Neurology</option>
+              <option value="ENT">ENT</option>
+              <option value="Gynecology">Gynecology</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="add-doc-exp">Experience (Years)</label>
+            <input type="number" id="add-doc-exp" class="form-control" value="8" min="1" max="50">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="add-doc-fee">Consultation Fee (₹)</label>
+            <input type="number" id="add-doc-fee" class="form-control" value="600" min="100" step="50">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="add-doc-city">City</label>
+            <input type="text" id="add-doc-city" class="form-control" value="New Delhi" placeholder="New Delhi / Mumbai / Kolkata">
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label class="form-label" for="add-doc-clinic">Clinic / Hospital Affiliation</label>
+          <input type="text" id="add-doc-clinic" class="form-control" value="Apollo Super Speciality Hospital" placeholder="Hospital Name">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label class="form-label" for="add-doc-avatar">Profile Image URL (Optional)</label>
+          <input type="url" id="add-doc-avatar" class="form-control" placeholder="https://images.unsplash.com/photo-...">
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeAddDoctorModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-add-doc" style="background: #0284c7;">
+            <span>✓ Add & Verify Doctor</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- Dynamic Footer -->
   <footer id="main-footer"></footer>

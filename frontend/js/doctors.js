@@ -219,13 +219,29 @@ function setupFilterListeners() {
     });
   }
 
-  const sortSelect = document.getElementById('filter-sort');
-  if (sortSelect) {
-    sortSelect.addEventListener('change', () => {
-      currentPage = 1;
-      loadDoctors();
+  // 250ms Debounced Instant Live Search
+  let searchDebounceTimer = null;
+  const searchInput = document.getElementById('filter-search');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        currentPage = 1;
+        loadDoctors();
+      }, 250);
     });
   }
+
+  // Instant filter on dropdown changes
+  ['filter-specialty', 'filter-city', 'filter-min-rating', 'filter-max-fee', 'filter-sort'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('change', () => {
+        currentPage = 1;
+        loadDoctors();
+      });
+    }
+  });
 
   const resetBtn = document.getElementById('btn-reset-filters');
   if (resetBtn) {

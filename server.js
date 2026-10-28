@@ -137,14 +137,17 @@ app.use((req, res, next) => {
 });
 app.use(errorHandler);
 
-// Connect to MongoDB and start server
+// Connect to MongoDB and start server immediately
 const startServer = async () => {
   try {
-    await connectDB();
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
       console.log(`🏥 Health Check: http://localhost:${PORT}/api/health`);
       console.log(`🌐 Application UI: http://localhost:${PORT}/`);
+    });
+
+    connectDB().catch((err) => {
+      console.error(`⚠️ MongoDB connection pending or unavailable: ${err.message}`);
     });
   } catch (error) {
     console.error(`❌ Server Initialization Failed: ${error.message}`);

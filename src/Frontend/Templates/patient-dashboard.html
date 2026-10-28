@@ -145,6 +145,36 @@
         </div>
       </div>
 
+      <!-- SECTION: MEDICAL RECORDS & LAB VAULT -->
+      <div style="margin-top: 3rem; background: #ffffff; border: 1px solid var(--border-light); border-radius: var(--radius-xl); padding: 1.75rem; box-shadow: var(--shadow-sm);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+          <div>
+            <h2 style="font-size: 1.35rem; color: var(--navy-dark); margin: 0; display: flex; align-items: center; gap: 8px;">
+              <span>📁</span> Medical Records & Diagnostic Lab Vault
+            </h2>
+            <p style="font-size: 0.85rem; color: var(--navy-muted); margin: 0.25rem 0 0;">
+              Securely store, organize, and share blood tests, digital X-rays, and diagnostic reports with your doctors.
+            </p>
+          </div>
+          <button type="button" onclick="openUploadRecordModal()" class="btn btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 700; background: #0284c7;">
+            ➕ Upload Medical Record
+          </button>
+        </div>
+
+        <!-- Filter category pills -->
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem; flex-wrap: wrap;">
+          <button type="button" class="btn btn-secondary btn-sm rec-filter-btn active" onclick="window.filterRecordsByCategory('all', this)" style="border-radius: 9999px; padding: 0.35rem 0.85rem; font-size: 0.8rem; background: #0284c7; color: #fff;">All Records</button>
+          <button type="button" class="btn btn-secondary btn-sm rec-filter-btn" onclick="window.filterRecordsByCategory('Lab Report', this)" style="border-radius: 9999px; padding: 0.35rem 0.85rem; font-size: 0.8rem;">🧪 Lab Reports</button>
+          <button type="button" class="btn btn-secondary btn-sm rec-filter-btn" onclick="window.filterRecordsByCategory('Radiology / Scan', this)" style="border-radius: 9999px; padding: 0.35rem 0.85rem; font-size: 0.8rem;">🩻 Radiology / X-Rays</button>
+          <button type="button" class="btn btn-secondary btn-sm rec-filter-btn" onclick="window.filterRecordsByCategory('Prescription', this)" style="border-radius: 9999px; padding: 0.35rem 0.85rem; font-size: 0.8rem;">💊 Prescriptions</button>
+        </div>
+
+        <!-- Records Grid -->
+        <div id="patient-records-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem;">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
     </div>
   </main>
 
@@ -432,6 +462,62 @@
     </div>
   </div>
 
+  <!-- MODAL: UPLOAD NEW MEDICAL RECORD -->
+  <div class="modal-overlay" id="upload-record-modal">
+    <div class="modal-content" style="max-width: 540px;">
+      <button class="modal-close-btn" onclick="closeUploadRecordModal()">✕</button>
+
+      <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem;">
+        <div style="width: 44px; height: 44px; border-radius: 50%; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+          📄
+        </div>
+        <div>
+          <h3 style="font-size: 1.25rem; color: var(--navy-dark); margin: 0;">Upload Medical Document</h3>
+          <p style="font-size: 0.85rem; color: var(--navy-muted); margin: 0;">Add diagnostic reports, blood test scans, or past prescriptions.</p>
+        </div>
+      </div>
+
+      <form id="form-upload-record">
+        <div class="form-group">
+          <label class="form-label" for="rec-title">Document / Report Title</label>
+          <input type="text" id="rec-title" class="form-control" placeholder="e.g. Complete Blood Count (CBC) Panel" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div class="form-group">
+            <label class="form-label" for="rec-type">Record Category</label>
+            <select id="rec-type" class="form-control">
+              <option value="Lab Report">Lab Report (Blood, Urine, etc.)</option>
+              <option value="Radiology / Scan">Radiology / X-Ray / MRI</option>
+              <option value="Prescription">Prescription</option>
+              <option value="Discharge Summary">Discharge Summary</option>
+              <option value="Vaccination">Vaccination Record</option>
+              <option value="Other">Other Medical File</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="rec-date">Test Date</label>
+            <input type="date" id="rec-date" class="form-control" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="rec-facility">Diagnostic Lab / Hospital Facility</label>
+          <input type="text" id="rec-facility" class="form-control" placeholder="e.g. Dr. Lal PathLabs, Max Healthcare" value="Apollo Diagnostics & Health Labs">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="rec-summary">Key Diagnostic Findings / Summary</label>
+          <textarea id="rec-summary" class="form-control" rows="2" placeholder="e.g. Cholesterol within normal range, HbA1c 5.4%, Normal sinus rhythm"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem; background: #0284c7;">
+          Save to Medical Vault
+        </button>
+      </form>
+    </div>
+  </div>
+
   <!-- Dynamic Footer -->
   <footer id="main-footer"></footer>
 
@@ -441,6 +527,8 @@
   <script src="js/auth.js"></script>
   <script src="js/navbar.js"></script>
   <script src="js/telehealth.js"></script>
+  <script src="js/prescription.js"></script>
+  <script src="js/calendar.js"></script>
   <script src="js/patient-dashboard.js"></script>
 </body>
 </html>

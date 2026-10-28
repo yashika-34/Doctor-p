@@ -283,8 +283,32 @@ async function handleIncomingSignal(signal) {
     return;
   }
 
-  // 1. DOCTOR DASHBOARD: Receives INCOMING_CALL
-  if (signal.type === 'INCOMING_CALL') {
+  // 1. PATIENT DASHBOARD: Receives DOCTOR_CALLING_PATIENT (Doctor initiates video call)
+  if (signal.type === 'DOCTOR_CALLING_PATIENT') {
+    const user = window.Auth ? window.Auth.getUser() : null;
+    const isPatient = !user || user.role === 'patient' || window.location.pathname.includes('patient-dashboard.html') || window.location.pathname.includes('my-appointments.html');
+    if (isPatient) {
+      activeIncomingCall = signal;
+      ensurePatientIncomingCallModalExists();
+      const modal = document.getElementById('patient-incoming-call-alert');
+      const docNameEl = document.getElementById('patient-call-doc-name');
+      const docSpecEl = document.getElementById('patient-call-doc-spec');
+      const docAvatarEl = document.getElementById('patient-call-doc-avatar');
+      const roomIdEl = document.getElementById('patient-call-room-id');
+
+      if (docNameEl) docNameEl.innerText = signal.doctorName || 'Attending Doctor';
+      if (docSpecEl) docSpecEl.innerText = `${signal.specialization || 'Hospital Specialist'} • Calling for scheduled consultation`;
+      if (docAvatarEl && signal.doctorAvatar) docAvatarEl.src = signal.doctorAvatar;
+      if (roomIdEl) roomIdEl.innerText = signal.appointmentId || 'APT-LIVE';
+
+      if (modal) modal.style.display = 'flex';
+      startIncomingDoctorRingtone();
+      if (window.showToast) window.showToast(`📞 Video Call from ${signal.doctorName || 'Doctor'}!`, 'info');
+    }
+  }
+
+  // 2. DOCTOR DASHBOARD: Receives INCOMING_CALL (Patient initiates video call)
+  else if (signal.type === 'INCOMING_CALL') {
     const user = window.Auth ? window.Auth.getUser() : null;
     const isDoc = (user && user.role === 'doctor') || window.location.pathname.includes('doctor-dashboard.html');
     if (isDoc) {
@@ -305,35 +329,47 @@ async function handleIncomingSignal(signal) {
     }
   }
 
-  // 2. PATIENT DASHBOARD: Receives CALL_ACCEPTED from Doctor
+  // 3. BOTH: Receives CALL_ACCEPTED
   else if (signal.type === 'CALL_ACCEPTED') {
-    if (currentRole === 'patient') {
-      stopOutgoingRingtone();
-      const connectingOverlay = document.getElementById('telehealth-connecting-overlay');
-      if (connectingOverlay) {
-        connectingOverlay.style.display = 'none';
-      }
-      playConnectedChime();
-      startEcgWave();
-      startCallTimer();
-      if (window.showToast) window.showToast(`✓ Call answered by ${signal.doctorName || 'Doctor'}! Establishing live video...`, 'success');
-
-      // Initialize WebRTC PeerConnection as Caller and Create Offer
-      await initializePeerConnectionAsCaller();
+    stopOutgoingRingtone();
+    stopIncomingDoctorRingtone();
+    const connectingOverlay = document.getElementById('telehealth-connecting-overlay');
+    if (connectingOverlay) {
+      connectingOverlay.style.display = 'none';
     }
+    playConnectedChime();
+    startEcgWave();
+    startCallTimer();
+
+    const placeholder = document.getElementById('remote-placeholder-name');
+    if (placeholder) {
+      placeholder.innerText = 'Connected! Video feed streaming...';
+    }
+
+    if (window.showToast) {
+      const partner = currentRole === 'doctor' ? (signal.patientName || 'Patient') : (signal.doctorName || 'Doctor');
+      window.showToast(`✓ Call connected with ${partner}!`, 'success');
+    }
+
+    // Initialize WebRTC PeerConnection as Caller and Create Offer
+    await initializePeerConnectionAsCaller();
   }
 
-  // 3. PATIENT DASHBOARD: Receives CALL_DECLINED
+  // 4. BOTH: Receives CALL_DECLINED
   else if (signal.type === 'CALL_DECLINED') {
-    if (currentRole === 'patient') {
-      stopOutgoingRingtone();
-      const connectingOverlay = document.getElementById('telehealth-connecting-overlay');
-      if (connectingOverlay) connectingOverlay.style.display = 'none';
-      const overlay = document.getElementById('telehealth-modal-overlay');
-      if (overlay) overlay.style.display = 'none';
-      document.body.style.overflow = '';
-      if (window.showToast) window.showToast('Doctor is attending another clinical emergency. Call declined.', 'warning');
-    }
+    stopOutgoingRingtone();
+    stopIncomingDoctorRingtone();
+    const connectingOverlay = document.getElementById('telehealth-connecting-overlay');
+    if (connectingOverlay) connectingOverlay.style.display = 'none';
+    const overlay = document.getElementById('telehealth-modal-overlay');
+    if (overlay) overlay.style.display = 'none';
+    const pModal = document.getElementById('patient-incoming-call-alert');
+    if (pModal) pModal.style.display = 'none';
+    const dModal = document.getElementById('doctor-incoming-call-alert');
+    if (dModal) dModal.style.display = 'none';
+
+    document.body.style.overflow = '';
+    if (window.showToast) window.showToast('Call was declined or unavailable.', 'warning');
   }
 
   // 4. DOCTOR: Receives WEBRTC_OFFER from Patient
@@ -749,6 +785,130 @@ function ensureIncomingCallModalExists() {
 }
 
 // ==========================================================================
+// INCOMING DOCTOR CALL ALERT MODAL (Patient Side)
+// ==========================================================================
+function ensurePatientIncomingCallModalExists() {
+  if (document.getElementById('patient-incoming-call-alert')) return;
+
+  const modalHtml = `
+    <div id="patient-incoming-call-alert" class="modal-overlay" style="display: none; z-index: 999999; background: rgba(2, 6, 23, 0.88); backdrop-filter: blur(12px);">
+      <div class="modal-content" style="max-width: 460px; text-align: center; border: 2px solid #0284c7; box-shadow: 0 0 50px rgba(2, 132, 199, 0.45); border-radius: 16px; padding: 2rem 1.75rem;">
+        
+        <div style="position: relative; width: 88px; height: 88px; margin: 0 auto 1.25rem;">
+          <div style="position: absolute; inset: -12px; border-radius: 50%; border: 3px solid #0284c7; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+          <img id="patient-call-doc-avatar" src="https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=400&q=80" style="width: 88px; height: 88px; border-radius: 50%; object-fit: cover; border: 3px solid #0284c7; position: relative; z-index: 2; box-shadow: 0 8px 24px rgba(2,132,199,0.5);">
+        </div>
+
+        <div style="display: inline-block; background: #e0f2fe; color: #0369a1; font-size: 0.75rem; font-weight: 800; padding: 0.25rem 0.85rem; border-radius: 20px; border: 1px solid #bae6fd; margin-bottom: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">
+          ● Doctor Is Calling You (Live Video)
+        </div>
+
+        <h2 style="font-size: 1.45rem; color: var(--navy-dark); margin-bottom: 0.25rem;" id="patient-call-doc-name">Dr. Rajesh Sharma</h2>
+        <p style="font-size: 0.85rem; color: var(--navy-muted); margin-bottom: 1.25rem;" id="patient-call-doc-spec">
+          Attending Specialist • Ready for your consultation
+        </p>
+
+        <div style="background: var(--navy-light); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.75rem; text-align: left; font-size: 0.82rem;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.35rem;">
+            <span style="color: var(--navy-muted);">Appointment ID:</span>
+            <strong id="patient-call-room-id" style="font-family: monospace; color: var(--primary);">APT-20261025-0000</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--navy-muted);">Video Channel:</span>
+            <span style="color: #059669; font-weight: 700;">🔒 WebRTC Peer-to-Peer 1080p</span>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem;">
+          <button type="button" id="btn-patient-accept-call" class="btn btn-success" style="background: #10b981; border: none; padding: 0.85rem 1rem; font-size: 1rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 0.5rem; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.45); border-radius: 8px; cursor: pointer; color: #fff;">
+            <span>📞 Accept & Join</span>
+          </button>
+          <button type="button" id="btn-patient-decline-call" class="btn btn-danger" style="background: #ef4444; border: none; padding: 0.85rem 1rem; font-size: 0.95rem; font-weight: 600; border-radius: 8px; cursor: pointer; color: #fff;">
+            <span>✕ Decline</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+  // Patient clicks "Accept & Join"
+  document.getElementById('btn-patient-accept-call')?.addEventListener('click', async () => {
+    if (!activeIncomingCall) return;
+    stopIncomingDoctorRingtone();
+    const modal = document.getElementById('patient-incoming-call-alert');
+    if (modal) modal.style.display = 'none';
+
+    const user = window.Auth ? window.Auth.getUser() : {};
+    const patName = user.name || 'Patient';
+
+    // 1. Inform Doctor that call was answered
+    emitTelehealthSignal({
+      type: 'CALL_ACCEPTED',
+      appointmentId: activeIncomingCall.appointmentId,
+      patientName: patName,
+      doctorName: activeIncomingCall.doctorName,
+    });
+
+    // 2. Open Live Room on Patient side
+    await window.startTelehealthCall(activeIncomingCall.appointmentId, 'patient', {
+      doctorName: activeIncomingCall.doctorName,
+      specialty: activeIncomingCall.specialization,
+      doctorAvatar: activeIncomingCall.doctorAvatar,
+    });
+  });
+
+  // Patient clicks "Decline"
+  document.getElementById('btn-patient-decline-call')?.addEventListener('click', () => {
+    if (!activeIncomingCall) return;
+    stopIncomingDoctorRingtone();
+    const modal = document.getElementById('patient-incoming-call-alert');
+    if (modal) modal.style.display = 'none';
+
+    emitTelehealthSignal({
+      type: 'CALL_DECLINED',
+      appointmentId: activeIncomingCall.appointmentId,
+    });
+    if (window.showToast) window.showToast('Call declined', 'info');
+  });
+}
+
+// Doctor Initiates Telehealth Call to Patient
+window.doctorCallPatient = async function (appointmentId, patientName = 'Patient') {
+  ensureTelehealthModalExists();
+
+  const user = window.Auth ? window.Auth.getUser() : {};
+  const docName = user.name || 'Doctor';
+
+  // 1. Play ringing tone on Doctor side
+  startOutgoingRingtone();
+
+  // 2. Broadcast DOCTOR_CALLING_PATIENT signal
+  emitTelehealthSignal({
+    type: 'DOCTOR_CALLING_PATIENT',
+    appointmentId: appointmentId || 'APT-2026-LIVE',
+    patientName: patientName,
+    doctorName: docName,
+    doctorAvatar: user.avatar || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=400&q=80',
+    specialization: user.specialization || 'Attending Specialist',
+    clinicName: user.clinicName || 'DoctorP Clinic',
+    status: 'ringing',
+  });
+
+  // 3. Doctor directly enters room and waits for patient
+  await window.startTelehealthCall(appointmentId, 'doctor', {
+    patientName: patientName,
+  });
+
+  const placeholder = document.getElementById('remote-placeholder-name');
+  if (placeholder) {
+    placeholder.innerText = `Calling ${patientName}... Ringing patient's device...`;
+  }
+};
+
+// ==========================================================================
 // TELEHEALTH CONSULTATION ROOM MODAL (Real WebRTC Video Feeds)
 // ==========================================================================
 function ensureTelehealthModalExists() {
@@ -759,17 +919,30 @@ function ensureTelehealthModalExists() {
       <div class="telehealth-container">
         
         <!-- CALL CONNECTING / DIALING SCREEN OVERLAY (Patient Side) -->
-        <div id="telehealth-connecting-overlay" style="position: absolute; inset: 0; background: radial-gradient(circle at center, #0f172a 0%, #020617 100%); z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #ffffff;">
+        <div id="telehealth-connecting-overlay" style="position: absolute; inset: 0; background: radial-gradient(circle at center, #0f172a 0%, #020617 100%); z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #ffffff; padding: 2rem;">
+          <!-- Top Right Close X Button -->
+          <button type="button" id="btn-cancel-outgoing-x" style="position: absolute; top: 1.5rem; right: 1.5rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #ffffff; width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.25rem; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(239,68,68,0.3)'; this.style.color='#fca5a5';" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#ffffff';" title="Cancel & Close">✕</button>
+
           <div style="position: relative; margin-bottom: 1.5rem;">
             <div style="position: absolute; inset: -15px; border-radius: 50%; border: 2px solid rgba(13, 148, 136, 0.4); animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
-            <img id="connecting-partner-avatar" src="https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=400&q=80" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #0d9488; position: relative; z-index: 2; box-shadow: 0 0 25px rgba(13,148,136,0.5);">
+            <img id="connecting-partner-avatar" src="https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=400&q=80" style="width: 105px; height: 105px; border-radius: 50%; object-fit: cover; border: 3px solid #0d9488; position: relative; z-index: 2; box-shadow: 0 0 30px rgba(13,148,136,0.5);">
           </div>
-          <h3 id="connecting-partner-name" style="font-size: 1.35rem; margin-bottom: 0.35rem; color: #f8fafc;">Calling Dr. Rajesh Sharma...</h3>
-          <div id="connecting-status-text" style="font-size: 0.85rem; color: #38bdf8; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem;">
+          <h3 id="connecting-partner-name" style="font-size: 1.4rem; font-weight: 700; margin-bottom: 0.4rem; color: #f8fafc;">Calling Doctor...</h3>
+          <div id="connecting-status-text" style="font-size: 0.9rem; color: #38bdf8; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
             <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #38bdf8; animation: pulse 1s infinite;"></span>
-            Ringing Dr. Rajesh Sharma... Waiting for doctor to pick up...
+            Connecting to clinic... Waiting for doctor to pick up...
           </div>
-          <div style="font-size: 0.75rem; color: #94a3b8; font-family: monospace; margin-bottom: 1.25rem;">Room ID: <span id="connecting-room-id">APT-2026-LIVE</span></div>
+          <div style="font-size: 0.8rem; color: #94a3b8; font-family: monospace; margin-bottom: 2rem;">Room ID: <span id="connecting-room-id">APT-2026-LIVE</span></div>
+
+          <!-- PROMINENT CALL CUT / END CALL BUTTON -->
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 0.65rem;">
+            <button type="button" id="btn-cancel-outgoing-call" style="width: 68px; height: 68px; border-radius: 50%; background: #ef4444; border: 3px solid rgba(255,255,255,0.4); color: #ffffff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.25s ease; box-shadow: 0 8px 25px rgba(239, 68, 68, 0.6);" onmouseover="this.style.transform='scale(1.12)'; this.style.background='#dc2626'; this.style.boxShadow='0 10px 30px rgba(220,38,38,0.8)';" onmouseout="this.style.transform='scale(1)'; this.style.background='#ef4444'; this.style.boxShadow='0 8px 25px rgba(239,68,68,0.6)';" title="Cut / End Call">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(135deg);">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+              </svg>
+            </button>
+            <span style="font-size: 0.85rem; color: #fca5a5; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">Cut Call</span>
+          </div>
         </div>
 
         <!-- Header Bar -->
@@ -1185,6 +1358,38 @@ function attachTelehealthEventListeners() {
 
   if (endBtn) endBtn.onclick = endCall;
   if (leaveBtn) leaveBtn.onclick = endCall;
+
+  // Cut / Cancel Outgoing Call during Dialing Screen
+  const cancelOutgoingCall = () => {
+    stopOutgoingRingtone();
+    emitTelehealthSignal({
+      type: 'CALL_ENDED',
+      appointmentId: currentAppointmentId,
+    });
+    fetch(`/api/telehealth/signal/${currentAppointmentId}`, { method: 'DELETE' }).catch(() => {});
+
+    if (rtcPeerConnection) {
+      try { rtcPeerConnection.close(); } catch (e) {}
+      rtcPeerConnection = null;
+    }
+    if (telehealthLocalStream) {
+      telehealthLocalStream.getTracks().forEach((track) => track.stop());
+      telehealthLocalStream = null;
+    }
+    telehealthRemoteStream = null;
+
+    const overlay = document.getElementById('telehealth-modal-overlay');
+    if (overlay) overlay.style.display = 'none';
+    const connectingOverlay = document.getElementById('telehealth-connecting-overlay');
+    if (connectingOverlay) connectingOverlay.style.display = 'none';
+    document.body.style.overflow = '';
+    if (window.showToast) window.showToast('Call cut / ended', 'info');
+  };
+
+  const cancelOutgoingBtn = document.getElementById('btn-cancel-outgoing-call');
+  const cancelOutgoingX = document.getElementById('btn-cancel-outgoing-x');
+  if (cancelOutgoingBtn) cancelOutgoingBtn.onclick = cancelOutgoingCall;
+  if (cancelOutgoingX) cancelOutgoingX.onclick = cancelOutgoingCall;
 }
 
 // ==========================================================================
@@ -1238,10 +1443,11 @@ window.startTelehealthCall = async function (appointmentId, role = 'patient', pa
     // Show Calling / Dialing screen
     if (connectingOverlay) connectingOverlay.style.display = 'flex';
 
+    const targetDocName = partnerInfo.doctorName || 'Doctor';
     if (connectingStatus) {
       connectingStatus.innerHTML = `
         <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #38bdf8; animation: pulse 1s infinite;"></span>
-        Ringing Dr. Rajesh Sharma... Waiting for doctor to pick up...
+        Ringing ${targetDocName}... Waiting for doctor to pick up...
       `;
     }
 
@@ -1257,7 +1463,7 @@ window.startTelehealthCall = async function (appointmentId, role = 'patient', pa
       patientName: user.name || 'Rahul Sharma',
       patientAge: user.age || 28,
       patientGender: user.gender || 'Male',
-      doctorName: partnerInfo.doctorName || 'Dr. Rajesh Sharma, MD',
+      doctorName: targetDocName,
       status: 'ringing',
     });
   } else {
@@ -1341,6 +1547,7 @@ function stopTelehealthSession() {
 if (typeof window !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {
     ensureIncomingCallModalExists();
+    ensurePatientIncomingCallModalExists();
     listenTelehealthSignals();
   });
 }

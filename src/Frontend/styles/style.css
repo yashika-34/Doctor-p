@@ -222,6 +222,92 @@ img {
   transition: var(--transition);
 }
 
+/* Doctor Dashboard — Teal-themed navbar */
+body.role-doctor .header-navbar {
+  background: rgba(10, 78, 74, 0.97);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(5, 150, 105, 0.35);
+  box-shadow: 0 2px 16px rgba(13, 148, 136, 0.25);
+}
+
+body.role-doctor .brand-logo {
+  color: #ccfbf1;
+}
+
+body.role-doctor .brand-badge {
+  color: #5eead4;
+}
+
+body.role-doctor .nav-links a {
+  color: #a7f3d0;
+}
+
+body.role-doctor .nav-links a:hover,
+body.role-doctor .nav-links a.active {
+  color: #5eead4;
+}
+
+body.role-doctor .nav-links a.active::after {
+  background: #5eead4;
+}
+
+body.role-doctor .user-profile-menu {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(94, 234, 212, 0.3);
+}
+
+body.role-doctor .user-name {
+  color: #ffffff;
+}
+
+body.role-doctor .mobile-nav-toggle {
+  color: #ccfbf1;
+}
+
+/* Admin Dashboard — Deep navy-themed navbar */
+body.role-admin .header-navbar {
+  background: rgba(15, 23, 42, 0.98);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.4);
+}
+
+body.role-admin .brand-logo {
+  color: #f1f5f9;
+}
+
+body.role-admin .brand-badge {
+  color: #fbbf24;
+}
+
+body.role-admin .nav-links a {
+  color: #94a3b8;
+}
+
+body.role-admin .nav-links a:hover,
+body.role-admin .nav-links a.active {
+  color: #fbbf24;
+}
+
+body.role-admin .nav-links a.active::after {
+  background: #fbbf24;
+}
+
+body.role-admin .user-profile-menu {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+body.role-admin .user-name {
+  color: #ffffff;
+}
+
+body.role-admin .mobile-nav-toggle {
+  color: #f1f5f9;
+}
+
 .nav-container {
   display: flex;
   align-items: center;

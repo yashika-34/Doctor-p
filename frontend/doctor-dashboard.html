@@ -6,6 +6,7 @@
   <title>Doctor Dashboard | DoctorP</title>
   <meta name="description" content="Manage patient consultation requests, clinic schedule, and professional profile.">
   <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/custom.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230d9488'><path d='M19 10.5h-5.5V5c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v5.5H5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5h5.5V19c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-5.5H19c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5z'/></svg>">
 </head>
 <body>
@@ -119,7 +120,10 @@
             <div style="background: #ffffff; border: 1px solid var(--border-light); border-radius: var(--radius-xl); padding: 1.5rem; box-shadow: var(--shadow-sm);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
                 <h3 style="font-size: 1.25rem;">Scheduled Patient Consultations</h3>
-                <div style="display: flex; gap: 0.5rem;">
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                  <button onclick="exportDoctorAppointmentsCSV()" class="btn btn-outline btn-sm" style="display: inline-flex; align-items: center; gap: 4px; font-weight: 700; border-color: var(--primary); color: var(--primary);" title="Download Consultations as Excel/CSV">
+                    📥 Export CSV
+                  </button>
                   <button onclick="loadDoctorAppointments('all')" class="btn btn-secondary btn-sm">All</button>
                   <button onclick="loadDoctorAppointments('pending')" class="btn btn-secondary btn-sm">Pending</button>
                   <button onclick="loadDoctorAppointments('confirmed')" class="btn btn-secondary btn-sm">Confirmed</button>
@@ -194,6 +198,65 @@
 
                 <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">
                   Save Schedule & Slots
+                </button>
+              </form>
+            </div>
+
+            <!-- RECURRING BATCH SLOT GENERATOR WIZARD -->
+            <div style="background: linear-gradient(135deg, #f0fdfa 0%, #ffffff 100%); border: 1.5px solid #99f6e4; border-radius: var(--radius-xl); padding: 2rem; box-shadow: var(--shadow-sm); margin-top: 2rem;">
+              <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+                <div style="width: 40px; height: 40px; border-radius: 10px; background: #ccfbf1; color: #0f766e; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+                  ⚡
+                </div>
+                <div>
+                  <h3 style="font-size: 1.25rem; color: #0f172a; margin: 0;">Recurring Batch Slot Generator Wizard</h3>
+                  <p style="color: #64748b; font-size: 0.85rem; margin: 0;">Automatically generate and publish multiple consultation slots across date ranges in 1-click.</p>
+                </div>
+              </div>
+
+              <form id="doctor-wizard-form" style="margin-top: 1.25rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+                  <div class="form-group">
+                    <label class="form-label" for="wizard-start-date">Start Date</label>
+                    <input type="date" id="wizard-start-date" class="form-control" required>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="wizard-end-date">End Date</label>
+                    <input type="date" id="wizard-end-date" class="form-control" required>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="wizard-duration">Slot Duration</label>
+                    <select id="wizard-duration" class="form-control">
+                      <option value="15">15 Minutes / Slot</option>
+                      <option value="20">20 Minutes / Slot</option>
+                      <option value="30" selected>30 Minutes / Slot (Standard)</option>
+                      <option value="45">45 Minutes / Slot</option>
+                      <option value="60">60 Minutes / Slot</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem; background: #ffffff; padding: 1rem; border-radius: 12px; border: 1px solid #e2e8f0;">
+                  <div>
+                    <h5 style="margin: 0 0 0.5rem; font-size: 0.85rem; color: #0f766e; text-transform: uppercase;">🌅 Morning Shift Hours</h5>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                      <input type="time" id="wizard-shift1-start" class="form-control" value="09:00">
+                      <span style="font-size: 0.85rem; color: #64748b; align-self: center;">to</span>
+                      <input type="time" id="wizard-shift1-end" class="form-control" value="13:00">
+                    </div>
+                  </div>
+                  <div>
+                    <h5 style="margin: 0 0 0.5rem; font-size: 0.85rem; color: #0f766e; text-transform: uppercase;">🌆 Evening Shift Hours</h5>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                      <input type="time" id="wizard-shift2-start" class="form-control" value="17:00">
+                      <span style="font-size: 0.85rem; color: #64748b; align-self: center;">to</span>
+                      <input type="time" id="wizard-shift2-end" class="form-control" value="20:00">
+                    </div>
+                  </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="background: #0d9488; display: inline-flex; align-items: center; gap: 6px; font-weight: 700;">
+                  ⚡ Generate & Publish Slots
                 </button>
               </form>
             </div>
@@ -281,6 +344,27 @@
     </div>
   </div>
 
+  <!-- MODAL: PATIENT MEDICAL RECORDS & LAB VAULT (DOCTOR INSPECTION) -->
+  <div class="modal-overlay" id="doctor-patient-records-modal">
+    <div class="modal-content" style="max-width: 680px; max-height: 85vh; overflow-y: auto;">
+      <button class="modal-close-btn" onclick="closeDoctorRecordsModal()">✕</button>
+
+      <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem;">
+        <div style="width: 44px; height: 44px; border-radius: 50%; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+          📁
+        </div>
+        <div>
+          <h3 style="font-size: 1.25rem; color: var(--navy-dark); margin: 0;">Patient Health Records & Diagnostic Vault</h3>
+          <p style="font-size: 0.85rem; color: var(--navy-muted); margin: 0;">Patient: <strong id="doc-rec-patient-name">Patient</strong></p>
+        </div>
+      </div>
+
+      <div id="doc-patient-records-list">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
   <!-- Dynamic Footer -->
   <footer id="main-footer"></footer>
 
@@ -290,6 +374,8 @@
   <script src="js/auth.js"></script>
   <script src="js/navbar.js"></script>
   <script src="js/telehealth.js"></script>
+  <script src="js/calendar.js"></script>
+  <script src="js/prescription.js"></script>
   <script src="js/doctor-dashboard.js"></script>
 </body>
 </html>

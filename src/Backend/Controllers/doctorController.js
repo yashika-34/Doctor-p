@@ -258,6 +258,94 @@ const updateAvailability = async (req, res, next) => {
   }
 };
 
+// @desc    Batch generate recurring availability slots for doctor
+// @route   POST /api/doctors/slots/batch-generate
+// @access  Protected (Doctor)
+const batchGenerateSlots = async (req, res, next) => {
+  try {
+    const doctor = await DoctorProfile.findOne({ userId: req.user._id });
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Doctor profile not found' });
+    }
+
+    const {
+      startDate,
+      endDate,
+      daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+      shifts = [
+        { start: '09:00', end: '13:00' },
+        { start: '17:00', end: '20:00' },
+      ],
+      slotDuration = 30,
+    } = req.body;
+
+    const start = startDate ? new Date(startDate) : new Date();
+    const end = endDate ? new Date(endDate) : new Date(Date.now() + 14 * 86400000);
+
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const timeSlotsSet = new Set();
+    let createdCount = 0;
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dayName = dayNames[d.getDay()];
+      if (!daysOfWeek.includes(dayName)) continue;
+
+      const dateStr = d.toISOString().slice(0, 10);
+
+      for (const shift of shifts) {
+        const [startH, startM] = (shift.start || '09:00').split(':').map(Number);
+        const [endH, endM] = (shift.end || '13:00').split(':').map(Number);
+
+        let currentTotalMins = startH * 60 + startM;
+        const endTotalMins = endH * 60 + endM;
+
+        while (currentTotalMins + slotDuration <= endTotalMins) {
+          const slotH = String(Math.floor(currentTotalMins / 60)).padStart(2, '0');
+          const slotM = String(currentTotalMins % 60).padStart(2, '0');
+          const slotTime = `${slotH}:${slotM}`;
+          timeSlotsSet.add(slotTime);
+
+          const existing = await Slot.findOne({
+            doctorId: doctor._id,
+            date: dateStr,
+            time: slotTime,
+          });
+
+          if (!existing) {
+            await Slot.create({
+              doctorId: doctor._id,
+              date: dateStr,
+              time: slotTime,
+              status: 'available',
+            });
+            createdCount++;
+          }
+
+          currentTotalMins += slotDuration;
+        }
+      }
+    }
+
+    const allSlotsList = Array.from(timeSlotsSet).sort();
+    doctor.availableDays = daysOfWeek;
+    if (allSlotsList.length > 0) {
+      doctor.timeSlots = allSlotsList;
+    }
+    doctor.slotDuration = slotDuration;
+    await doctor.save();
+
+    res.status(201).json({
+      success: true,
+      message: `Generated ${createdCount} availability slots across selected schedule!`,
+      createdCount,
+      uniqueDailySlots: allSlotsList,
+      availableDays: doctor.availableDays,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Temporarily lock a slot for 5 minutes during checkout
 // @route   POST /api/doctors/slots/lock
 // @access  Protected
@@ -349,6 +437,7 @@ module.exports = {
   updateProfile,
   getAvailability,
   updateAvailability,
+  batchGenerateSlots,
   lockSlot,
   getMapDoctors,
 };

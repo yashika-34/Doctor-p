@@ -76,20 +76,25 @@ async function loadAdminDoctors() {
         const isApproved = doc.approvalStatus === 'approved';
         const statusBadge = `<span class="badge ${isApproved ? 'badge-completed' : 'badge-pending'}">${doc.approvalStatus}</span>`;
 
-        let toggleBtn = '';
+        let actionBtns = `<div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">`;
         if (isApproved) {
-          toggleBtn = `
-            <button onclick="toggleDoctorApproval('${doc._id}', 'rejected')" class="btn btn-danger btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
-              Reject
+          actionBtns += `
+            <button onclick="toggleDoctorApproval('${doc._id}', 'rejected')" class="btn btn-warning btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; background: #f59e0b; color: #fff;">
+              Suspend
             </button>
           `;
         } else {
-          toggleBtn = `
+          actionBtns += `
             <button onclick="toggleDoctorApproval('${doc._id}', 'approved')" class="btn btn-success btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
               Approve
             </button>
           `;
         }
+        actionBtns += `
+          <button onclick="deleteDoctor('${doc._id}', '${(doc.name || 'Doctor').replace(/'/g, "\\'")}')" class="btn btn-danger btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; background: #ef4444;" title="Delete Doctor">
+            🗑️ Remove
+          </button>
+        </div>`;
 
         return `
           <tr>
@@ -104,7 +109,7 @@ async function loadAdminDoctors() {
             <td>${doc.experience || 0} Yrs</td>
             <td>₹${doc.consultationFee || 500}</td>
             <td>${statusBadge}</td>
-            <td>${toggleBtn}</td>
+            <td>${actionBtns}</td>
           </tr>
         `;
       })
@@ -127,6 +132,85 @@ window.toggleDoctorApproval = async (doctorId, status) => {
     loadAdminDoctors();
   } catch (err) {
     window.showToast(err.message || 'Error updating doctor status', 'error');
+  }
+};
+
+// Modal Open/Close Helpers
+window.openAddDoctorModal = () => {
+  document.getElementById('admin-add-doctor-modal')?.classList.add('active');
+};
+
+window.closeAddDoctorModal = () => {
+  document.getElementById('admin-add-doctor-modal')?.classList.remove('active');
+};
+
+// Handle Admin Adding New Doctor
+window.handleAdminAddDoctor = async (e) => {
+  e.preventDefault();
+  const submitBtn = document.getElementById('btn-submit-add-doc');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerText = 'Adding Doctor...';
+  }
+
+  const name = document.getElementById('add-doc-name')?.value.trim();
+  const email = document.getElementById('add-doc-email')?.value.trim();
+  const password = document.getElementById('add-doc-password')?.value.trim();
+  const phone = document.getElementById('add-doc-phone')?.value.trim();
+  const specialization = document.getElementById('add-doc-specialization')?.value;
+  const experience = document.getElementById('add-doc-exp')?.value;
+  const consultationFee = document.getElementById('add-doc-fee')?.value;
+  const city = document.getElementById('add-doc-city')?.value.trim();
+  const clinicName = document.getElementById('add-doc-clinic')?.value.trim();
+  const profileImage = document.getElementById('add-doc-avatar')?.value.trim();
+
+  try {
+    const res = await window.apiFetch('/admin/doctors', {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+        phone,
+        specialization,
+        experience,
+        consultationFee,
+        city,
+        clinicName,
+        profileImage: profileImage || undefined,
+      }),
+    });
+
+    window.showToast(res.message || 'Doctor added successfully!', 'success');
+    window.closeAddDoctorModal();
+    document.getElementById('form-admin-add-doctor')?.reset();
+    loadAdminStats();
+    loadAdminDoctors();
+  } catch (err) {
+    window.showToast(err.message || 'Error adding doctor', 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerText = '✓ Add & Verify Doctor';
+    }
+  }
+};
+
+// Delete / Remove Doctor Permanently
+window.deleteDoctor = async (doctorId, doctorName) => {
+  if (!confirm(`Are you sure you want to permanently remove ${doctorName} from DoctorP? This will remove all their future consultation slots.`)) {
+    return;
+  }
+
+  try {
+    const res = await window.apiFetch(`/admin/doctors/${doctorId}`, {
+      method: 'DELETE',
+    });
+    window.showToast(res.message || 'Doctor removed successfully!', 'success');
+    loadAdminStats();
+    loadAdminDoctors();
+  } catch (err) {
+    window.showToast(err.message || 'Error removing doctor', 'error');
   }
 };
 
@@ -179,6 +263,7 @@ async function loadAdminAppointments() {
   try {
     const data = await window.apiFetch('/admin/appointments');
     const appointments = data.appointments || [];
+    window.currentAdminAppointments = appointments;
 
     if (appointments.length === 0) {
       tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 2rem;">No appointments recorded.</td></tr>`;
@@ -203,3 +288,35 @@ async function loadAdminAppointments() {
     tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--danger); padding: 2rem;">Error: ${err.message}</td></tr>`;
   }
 }
+
+// Export All Platform Appointments to CSV / Excel
+window.exportAdminAppointmentsCSV = () => {
+  const apts = window.currentAdminAppointments || [];
+  if (apts.length === 0) {
+    window.showToast('No platform appointments recorded to export.', 'warning');
+    return;
+  }
+
+  const headers = ['Booking ID', 'Patient Name', 'Doctor Name', 'Department', 'Date', 'Time', 'Fee (INR)', 'Mode', 'Status'];
+  const rows = apts.map((apt) => [
+    `"${apt.appointmentId || apt._id}"`,
+    `"${apt.patientId?.name || 'Patient'}"`,
+    `"${apt.doctorId?.name || 'Doctor'}"`,
+    `"${apt.doctorId?.specialization || 'General'}"`,
+    `"${apt.appointmentDate || ''}"`,
+    `"${apt.startTime || ''}"`,
+    `"${apt.fee || 0}"`,
+    `"${apt.consultationType || 'In-Clinic'}"`,
+    `"${apt.status || ''}"`,
+  ]);
+
+  const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement('a');
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', `DoctorP_All_Hospital_Appointments_${new Date().toISOString().slice(0, 10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.showToast('✅ All Hospital Bookings (.CSV) downloaded successfully!', 'success');
+};
